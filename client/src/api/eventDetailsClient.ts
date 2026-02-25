@@ -7,17 +7,20 @@ export interface DetailedEvent extends FeedEvent {
 
 export class EventDetailsClient {
     private baseUrl: string;
+    private token: string;
 
     constructor() {
-        this.baseUrl = "/api";
+        this.baseUrl = "https://dev.api.getjoiner.com";
+        this.token = "kK5uaQWvGJZtSFob2Yc6LApEHDUILFMiFBzOCMDGt2W690mnytREWQMGyq5rNm99";
     }
 
     async getEventDetails(id: string): Promise<DetailedEvent> {
-        const url = `${window.location.origin}${this.baseUrl}/service/events/${id}`;
+        const url = `${this.baseUrl}/api/service/events/${id}`;
         const response = await fetch(url, {
             method: "GET",
             headers: {
                 "Accept": "application/json",
+                "Authorization": `Bearer ${this.token}`,
             },
         });
 
