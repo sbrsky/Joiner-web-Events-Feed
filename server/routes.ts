@@ -2,8 +2,15 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
+import * as dotenv from "dotenv";
+dotenv.config();
+
 const EVENTS_API_URL = (process.env.EVENTS_API_URL || "https://dev.api.getjoiner.com").replace(/\/$/, "");
-const EVENTS_API_KEY = process.env.EVENTS_API_KEY || "kK5uaQWvGJZtSFob2Yc6LApEHDUILFMiFBzOCMDGt2W690mnytREWQMGyq5rNm99";
+const EVENTS_API_KEY = process.env.EVENTS_API_KEY || "";
+
+if (!EVENTS_API_KEY) {
+  console.warn("WARNING: EVENTS_API_KEY is not set. API calls will fail.");
+}
 
 export async function registerRoutes(
   httpServer: Server,
