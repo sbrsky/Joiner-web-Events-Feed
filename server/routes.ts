@@ -9,13 +9,24 @@ import fs from "fs";
 
 function getSecret(name: string, fallback: string = ""): string {
   // 1. Try Environment Variables
-  if (process.env[name]) return process.env[name];
+  const val = process.env[name];
+  if (val && val.trim().length > 0) {
+    return val.trim();
+  }
 
   // 2. Try common Google Cloud Run / Docker Secret Mount paths
-  const paths = [`/secrets/${name}`, `/run/secrets/${name}`, `/etc/secrets/${name}`];
+  const paths = [
+    `/secrets/${name}`,
+    `/run/secrets/${name}`,
+    `/etc/secrets/${name}`,
+    `/var/run/secrets/${name}`
+  ];
   for (const p of paths) {
     try {
-      if (fs.existsSync(p)) return fs.readFileSync(p, "utf-8").trim();
+      if (fs.existsSync(p)) {
+        const fileVal = fs.readFileSync(p, "utf-8").trim();
+        if (fileVal.length > 0) return fileVal;
+      }
     } catch (e) { }
   }
 
