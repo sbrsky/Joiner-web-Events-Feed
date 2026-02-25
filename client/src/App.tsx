@@ -6,10 +6,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import EventsWebview from "@/pages/events-webview";
 
+import EventPage from "@/pages/event-page";
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={EventsWebview} />
+      <Route path="/event/:id" component={EventPage} />
       <Route component={NotFound} />
     </Switch>
   );

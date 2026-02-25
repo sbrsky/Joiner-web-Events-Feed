@@ -18,17 +18,17 @@ interface FeaturedCardProps {
 export function FeaturedCard({ event }: FeaturedCardProps) {
   return (
     <EventDetailModal event={event}>
-      <motion.div 
-        className="relative min-w-[85vw] h-[65vh] rounded-[2rem] overflow-hidden snap-center group cursor-pointer"
+      <motion.div
+        className="relative w-[400px] h-[65vh] shrink-0 rounded-[2rem] overflow-hidden snap-center group cursor-pointer"
         whileHover={{ scale: 0.98 }}
         transition={{ duration: 0.3 }}
         data-testid={`featured-event-${event.id}`}
       >
         {/* Background Image */}
         <div className="absolute inset-0">
-          <img 
-            src={event.image} 
-            alt={event.title} 
+          <img
+            src={event.image}
+            alt={event.title}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
@@ -72,7 +72,7 @@ export function FeaturedCard({ event }: FeaturedCardProps) {
               </div>
             </div>
             <span className="text-sm text-white/60">are going</span>
-            
+
             <button className="ml-auto bg-white text-black font-bold px-6 py-2.5 rounded-full text-sm hover:scale-105 active:scale-95 transition-all">
               Join
             </button>
