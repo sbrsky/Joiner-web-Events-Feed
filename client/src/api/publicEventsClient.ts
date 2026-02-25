@@ -27,18 +27,16 @@ export interface PublicEventsResponse {
 
 export class PublicEventsClient {
     private baseUrl: string;
-    private token: string;
 
     constructor() {
-        this.baseUrl = "http://127.0.0.1:8000";
-        this.token = "test_api_key";
+        this.baseUrl = "/api";
     }
 
     async getUpcomingPublicEvents(
         page: number = 1,
         country: string = "lisbon"
     ): Promise<{ events: FeedEvent[]; meta: PublicEventsResponse["meta"] }> {
-        const url = new URL(`${this.baseUrl}/api/events/upcoming-public`);
+        const url = new URL(`${window.location.origin}${this.baseUrl}/events/upcoming-public`);
         url.searchParams.append("country", country);
         url.searchParams.append("page", page.toString());
 
@@ -46,7 +44,6 @@ export class PublicEventsClient {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${this.token}`,
             },
         });
 
@@ -66,7 +63,7 @@ export class PublicEventsClient {
     }
 
     async getEventById(id: string): Promise<FeedEvent> {
-        const url = new URL(`${this.baseUrl}/api/events/${id}`);
+        const url = new URL(`${window.location.origin}${this.baseUrl}/events/${id}`);
         // Often single event endpoints might be just /api/events/:id or /api/event/:id
         // Since we don't know for sure, let's assume /api/events/:id based on standard REST.
         // If it fails, we might need to adjust.
@@ -75,7 +72,6 @@ export class PublicEventsClient {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${this.token}`,
             },
         });
 
