@@ -5,11 +5,25 @@ import { storage } from "./storage";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-const EVENTS_API_URL = (process.env.EVENTS_API_URL || "https://dev.api.getjoiner.com").replace(/\/$/, "");
-const EVENTS_API_KEY = process.env.EVENTS_API_KEY || "";
+import fs from "fs";
 
-if (!EVENTS_API_KEY) {
-  console.warn("WARNING: EVENTS_API_KEY is not set. API calls will fail.");
+function getSecret(name: string, fallback: string = ""): string {
+  // 1. Try Environment Variables
+  if (process.env[name]) return process.env[name];
+
+  // 2. Try common Google Cloud Run / Docker Secret Mount paths
+  const paths = [`/secrets/${name}`, `/run/secrets/${name}`, `/etc/secrets/${name}`];
+  for (const p of paths) {
+    try {
+      if (fs.existsSync(p)) return fs.readFileSync(p, "utf-8").trim();
+    } catch (e) { }
+  }
+
+  return fallback;
+}
+
+if (!getSecret("EVENTS_API_KEY")) {
+  console.warn("WARNING: EVENTS_API_KEY is not set globally. API calls will fail.");
 }
 
 export async function registerRoutes(
@@ -18,12 +32,14 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Proxy to real events API (all-feed)
   app.get("/api/all-feed", async (req, res) => {
+    const apiURL = getSecret("EVENTS_API_URL", "https://dev.api.getjoiner.com").replace(/\/$/, "");
+    const apiKey = getSecret("EVENTS_API_KEY");
     const clientId = req.query.client_id ?? "1";
-    const url = `${EVENTS_API_URL}/api/all-feed?client_id=${clientId}`;
+    const url = `${apiURL}/api/all-feed?client_id=${clientId}`;
     try {
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${EVENTS_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
         },
       });
       const text = await response.text();
@@ -44,13 +60,15 @@ export async function registerRoutes(
 
   // Proxy to service feed
   app.get("/api/service/feed", async (req, res) => {
+    const apiURL = getSecret("EVENTS_API_URL", "https://dev.api.getjoiner.com").replace(/\/$/, "");
+    const apiKey = getSecret("EVENTS_API_KEY");
     // Forward query parameters
     const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
-    const url = `${EVENTS_API_URL}/api/service/feed${queryString ? `?${queryString}` : ""}`;
+    const url = `${apiURL}/api/service/feed${queryString ? `?${queryString}` : ""}`;
     try {
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${EVENTS_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           Accept: "application/json",
         },
       });
@@ -64,11 +82,13 @@ export async function registerRoutes(
 
   // Proxy to event details
   app.get("/api/service/events/:id", async (req, res) => {
-    const url = `${EVENTS_API_URL}/api/service/events/${req.params.id}`;
+    const apiURL = getSecret("EVENTS_API_URL", "https://dev.api.getjoiner.com").replace(/\/$/, "");
+    const apiKey = getSecret("EVENTS_API_KEY");
+    const url = `${apiURL}/api/service/events/${req.params.id}`;
     try {
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${EVENTS_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           Accept: "application/json",
         },
       });
@@ -82,12 +102,14 @@ export async function registerRoutes(
 
   // Proxy for upcoming public events
   app.get("/api/events/upcoming-public", async (req, res) => {
+    const apiURL = getSecret("EVENTS_API_URL", "https://dev.api.getjoiner.com").replace(/\/$/, "");
+    const apiKey = getSecret("EVENTS_API_KEY");
     const queryString = new URLSearchParams(req.query as Record<string, string>).toString();
-    const url = `${EVENTS_API_URL}/api/events/upcoming-public${queryString ? `?${queryString}` : ""}`;
+    const url = `${apiURL}/api/events/upcoming-public${queryString ? `?${queryString}` : ""}`;
     try {
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${EVENTS_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           Accept: "application/json",
         },
       });
@@ -101,11 +123,13 @@ export async function registerRoutes(
 
   // Proxy for single public event
   app.get("/api/events/:id", async (req, res) => {
-    const url = `${EVENTS_API_URL}/api/events/${req.params.id}`;
+    const apiURL = getSecret("EVENTS_API_URL", "https://dev.api.getjoiner.com").replace(/\/$/, "");
+    const apiKey = getSecret("EVENTS_API_KEY");
+    const url = `${apiURL}/api/events/${req.params.id}`;
     try {
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${EVENTS_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           Accept: "application/json",
         },
       });
