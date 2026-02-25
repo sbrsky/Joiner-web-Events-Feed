@@ -171,54 +171,7 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                                 </p>
                             </div>
 
-                            {/* Registration Box (Moved here) */}
-                            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden p-1">
-                                <div className="p-5 space-y-5">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <h2 className="text-lg font-bold text-gray-900">Registration</h2>
-                                            <p className="text-sm text-gray-500 font-medium mt-0.5">
-                                                {isFree ? "Free" : `${minPrice} ${currency}`} • Approval Required
-                                            </p>
-                                        </div>
-                                        <div className="bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
-                                            • {event.spotsLeft || 0} spots left
-                                        </div>
-                                    </div>
 
-                                    {/* Date/Location Box inside Reg Box */}
-                                    <div className="bg-gray-50 rounded-xl p-5 space-y-5 border border-gray-100/50">
-                                        <div className="flex gap-4">
-                                            <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-gray-900">{event.date}</span>
-                                                <span className="text-xs text-gray-500 font-medium mt-0.5">{timeString} {endTimeString ? `- ${endTimeString}` : ""}</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-4">
-                                            <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-gray-900">
-                                                    {(event.raw?.place as string) || "Register to See Address"}
-                                                </span>
-                                                <span className="text-xs text-gray-500 font-medium mt-0.5">
-                                                    {event.location !== "TBA" ? event.location : "Location hidden"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <Button
-                                        className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-black font-bold text-base transition-colors group"
-                                        onClick={() => setDrawerType("join")}
-                                    >
-                                        Request to Join
-                                        <ArrowRight className="w-4 h-4 ml-2 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <div className="h-px w-full bg-gray-100" />
 
                             {/* Participants Section (Hidden on mobile as it's over the image) */}
                             <div className="hidden lg:block space-y-4 px-1">
@@ -277,7 +230,52 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                             </div>
                         </div>
 
+                        {/* Registration Box */}
+                        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden p-1">
+                            <div className="p-5 space-y-5">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-gray-900">Registration</h2>
+                                        <p className="text-sm text-gray-500 font-medium mt-0.5">
+                                            {isFree ? "Free" : `${minPrice} ${currency}`} • Approval Required
+                                        </p>
+                                    </div>
+                                    <div className="bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
+                                        • {event.spotsLeft || 0} spots left
+                                    </div>
+                                </div>
 
+                                {/* Date/Location Box inside Reg Box */}
+                                <div className="bg-gray-50 rounded-xl p-5 space-y-5 border border-gray-100/50">
+                                    <div className="flex gap-4">
+                                        <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-gray-900">{event.date}</span>
+                                            <span className="text-xs text-gray-500 font-medium mt-0.5">{timeString} {endTimeString ? `- ${endTimeString}` : ""}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-gray-900">
+                                                {(event.raw?.place as string) || "Register to See Address"}
+                                            </span>
+                                            <span className="text-xs text-gray-500 font-medium mt-0.5">
+                                                {event.location !== "TBA" ? event.location : "Location hidden"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Button
+                                    className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-black font-bold text-base transition-colors group"
+                                    onClick={() => setDrawerType("join")}
+                                >
+                                    Request to Join
+                                    <ArrowRight className="w-4 h-4 ml-2 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                                </Button>
+                            </div>
+                        </div>
 
                         {/* About Event */}
                         <div className="space-y-4">
