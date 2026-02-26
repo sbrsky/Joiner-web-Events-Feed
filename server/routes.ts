@@ -2,8 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
-const EVENTS_API_URL = (process.env.EVENTS_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-const EVENTS_API_KEY = process.env.EVENTS_API_KEY || "test_api_key";
+const EVENTS_API_URL = (process.env.EVENTS_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "").trim();
+const EVENTS_API_KEY = (process.env.EVENTS_API_KEY || "test_api_key").trim();
+
+console.log(`[BOOT] Events API URL configured as: ${EVENTS_API_URL}`);
+console.log(`[BOOT] Events API Key starts with: ${EVENTS_API_KEY.substring(0, 5)}... (Length: ${EVENTS_API_KEY.length})`);
 
 export async function registerRoutes(
   httpServer: Server,
