@@ -36,7 +36,7 @@ export async function registerRoutes(
   });
 
   // Generic proxy to hide real API URL and KEY from the frontend
-  app.all("/api/proxied/*", async (req, res) => {
+  app.use("/api/proxied", async (req, res) => {
     // req.originalUrl could be /api/proxied/api/service/feed?page=1
     // We want to fetch EVENTS_API_URL + /api/service/feed?page=1
     const targetPathAndQuery = req.originalUrl.replace("/api/proxied", "");
