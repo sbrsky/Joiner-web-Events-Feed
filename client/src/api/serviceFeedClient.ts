@@ -23,7 +23,7 @@ export class ServiceFeedClient {
     }
 
     async getFeed(page: number = 1, forWebview: 0 | 1 = 0): Promise<{ events: FeedEvent[]; meta: { current_page: number; last_page: number } }> {
-        const url = new URL(`${this.baseUrl}/api/service/feed`);
+        const url = new URL(`${this.baseUrl}/api/service/feed`, typeof window !== "undefined" ? window.location.origin : "http://localhost:5000");
         url.searchParams.append("page", page.toString());
         url.searchParams.append("for_webview", forWebview.toString());
         // Arrays are appended with []

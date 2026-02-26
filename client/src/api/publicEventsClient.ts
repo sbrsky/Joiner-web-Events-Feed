@@ -36,7 +36,7 @@ export class PublicEventsClient {
         page: number = 1,
         country: string = "lisbon"
     ): Promise<{ events: FeedEvent[]; meta: PublicEventsResponse["meta"] }> {
-        const url = new URL(`${this.baseUrl}/api/events/upcoming-public`);
+        const url = new URL(`${this.baseUrl}/api/events/upcoming-public`, typeof window !== "undefined" ? window.location.origin : "http://localhost:5000");
         url.searchParams.append("country", country);
         url.searchParams.append("page", page.toString());
 
@@ -63,7 +63,7 @@ export class PublicEventsClient {
     }
 
     async getEventById(id: string): Promise<FeedEvent> {
-        const url = new URL(`${this.baseUrl}/api/events/${id}`);
+        const url = new URL(`${this.baseUrl}/api/events/${id}`, typeof window !== "undefined" ? window.location.origin : "http://localhost:5000");
         // Often single event endpoints might be just /api/events/:id or /api/event/:id
         // Since we don't know for sure, let's assume /api/events/:id based on standard REST.
         // If it fails, we might need to adjust.
