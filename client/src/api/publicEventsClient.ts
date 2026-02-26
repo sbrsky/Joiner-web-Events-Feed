@@ -27,11 +27,9 @@ export interface PublicEventsResponse {
 
 export class PublicEventsClient {
     private baseUrl: string;
-    private token: string;
 
     constructor() {
-        this.baseUrl = "http://127.0.0.1:8000";
-        this.token = "test_api_key";
+        this.baseUrl = "/api/proxied";
     }
 
     async getUpcomingPublicEvents(
@@ -46,7 +44,6 @@ export class PublicEventsClient {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${this.token}`,
             },
         });
 
@@ -75,7 +72,6 @@ export class PublicEventsClient {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${this.token}`,
             },
         });
 
