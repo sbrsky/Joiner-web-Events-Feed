@@ -46,18 +46,25 @@ export async function registerRoutes(
     const url = `${EVENTS_API_URL}${targetPathAndQuery}`;
 
     try {
+      console.log(`[PROXY] Fetching: ${url}`);
+
       const response = await fetch(url, {
         method: req.method,
         headers: {
           "Accept": "application/json",
           "Authorization": `Bearer ${EVENTS_API_KEY}`,
           "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "X-Forwarded-For": req.ip || "",
         },
         body: ["GET", "HEAD"].includes(req.method) ? undefined : JSON.stringify(req.body),
       });
 
       const text = await response.text();
+
       if (!response.ok) {
+        console.error(`[PROXY FAIL] ${response.status} ${response.statusText} for ${url}`);
+        console.error(`[PROXY FAIL BODY] ${text.substring(0, 200)}`);
         let message = response.statusText || "Events API error";
         try {
           if (text.startsWith("{") && text.trim().endsWith("}")) {
