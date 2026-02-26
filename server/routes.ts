@@ -2,8 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
-const EVENTS_API_URL = (process.env.EVENTS_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-const EVENTS_API_KEY = process.env.EVENTS_API_KEY || "test_api_key";
+const EVENTS_API_URL = (process.env.EVENTS_API_URL || "https://dev.api.getjoiner.com").replace(/\/$/, "");
+const EVENTS_API_KEY = process.env.EVENTS_API_KEY || "kK5uaQWvGJZtSFob2Yc6LApEHDUILFMiFBzOCMDGt2W690mnytREWQMGyq5rNm99";
 
 export async function registerRoutes(
   httpServer: Server,
