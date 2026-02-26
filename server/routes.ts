@@ -20,13 +20,15 @@ export async function registerRoutes(
       "http://localhost:5173"
     ];
 
-    if (origin && allowedOrigins.includes(origin)) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
+    if (origin) {
+      const isAllowed = allowedOrigins.includes(origin) || origin.endsWith(".a.run.app");
+      if (isAllowed || process.env.NODE_ENV !== "production") {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+      } else {
+        res.setHeader("Access-Control-Allow-Origin", allowedOrigins[0]);
+      }
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
-    } else if (process.env.NODE_ENV === "production" && origin) {
-      // Reject cross-origin requests from unknown domains in production
-      return res.status(403).json({ message: "Forbidden: Invalid origin." });
     }
 
     if (req.method === "OPTIONS") {
