@@ -9,6 +9,33 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Enforce CORS to ensure only our frontend can reach the proxy API
+  app.use("/api", (req, res, next) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = [
+      "https://joiner.social",
+      "https://events.getjoiner.com",
+      "https://getjoiner.com",
+      "http://localhost:5000",
+      "http://localhost:5173"
+    ];
+
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+    } else if (process.env.NODE_ENV === "production" && origin) {
+      // Reject cross-origin requests from unknown domains in production
+      return res.status(403).json({ message: "Forbidden: Invalid origin." });
+    }
+
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
+
+    next();
+  });
+
   // Proxy to real events API (all-feed)
   app.get("/api/all-feed", async (req, res) => {
     const clientId = req.query.client_id ?? "1";
