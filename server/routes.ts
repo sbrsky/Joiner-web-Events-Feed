@@ -72,12 +72,7 @@ export async function registerRoutes(
     const url = `${EVENTS_API_URL}${targetPathAndQuery}`;
 
     try {
-      const maskedKey = AUTH_HEADER.length > 15
-        ? `${AUTH_HEADER.substring(0, 10)}...${AUTH_HEADER.substring(AUTH_HEADER.length - 4)}`
-        : "INVALID_LENGTH_KEY";
-
       console.log(`[PROXY] Fetching: ${url}`);
-      console.log(`[PROXY] Using Auth Header: ${maskedKey}`);
 
       const response = await fetch(url, {
         method: req.method,
@@ -85,8 +80,6 @@ export async function registerRoutes(
           "Accept": "application/json",
           "Authorization": AUTH_HEADER,
           "Content-Type": "application/json",
-          "User-Agent": req.headers["user-agent"] || "Joiner-Cloud-Run-Proxy",
-          "X-Forwarded-For": req.ip || "",
         },
         body: ["GET", "HEAD"].includes(req.method) ? undefined : JSON.stringify(req.body),
       });
