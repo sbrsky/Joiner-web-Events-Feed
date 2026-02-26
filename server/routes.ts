@@ -3,7 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
 const EVENTS_API_URL = (process.env.EVENTS_API_URL || "https://dev.api.getjoiner.com").replace(/\/$/, "");
-const EVENTS_API_KEY = process.env.EVENTS_API_KEY || "kK5uaQWvGJZtSFob2Yc6LApEHDUILFMiFBzOCMDGt2W690mnytREWQMGyq5rNm99";
+let rawApiKey = process.env.EVENTS_API_KEY || "kK5uaQWvGJZtSFob2Yc6LApEHDUILFMiFBzOCMDGt2W690mnytREWQMGyq5rNm99";
+rawApiKey = rawApiKey.replace(/^["']|["']$/g, '').trim();
+const AUTH_HEADER = rawApiKey.toLowerCase().startsWith('bearer ') ? rawApiKey : `Bearer ${rawApiKey}`;
 
 export async function registerRoutes(
   httpServer: Server,
@@ -45,7 +47,7 @@ export async function registerRoutes(
     try {
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${EVENTS_API_KEY}`,
+          Authorization: AUTH_HEADER,
         },
       });
       const text = await response.text();
@@ -76,7 +78,7 @@ export async function registerRoutes(
         method: req.method,
         headers: {
           "Accept": "application/json",
-          "Authorization": `Bearer ${EVENTS_API_KEY}`,
+          "Authorization": AUTH_HEADER,
           "Content-Type": "application/json",
         },
         body: ["GET", "HEAD"].includes(req.method) ? undefined : JSON.stringify(req.body),
