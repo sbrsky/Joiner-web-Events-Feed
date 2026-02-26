@@ -54,8 +54,6 @@ export async function registerRoutes(
           "Accept": "application/json",
           "Authorization": `Bearer ${EVENTS_API_KEY}`,
           "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "X-Forwarded-For": req.ip || "",
         },
         body: ["GET", "HEAD"].includes(req.method) ? undefined : JSON.stringify(req.body),
       });
