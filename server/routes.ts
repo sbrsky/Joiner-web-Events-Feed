@@ -35,5 +35,47 @@ export async function registerRoutes(
     }
   });
 
+  // Generic proxy to hide real API URL and KEY from the frontend
+  app.all("/api/proxied/*", async (req, res) => {
+    // req.originalUrl could be /api/proxied/api/service/feed?page=1
+    // We want to fetch EVENTS_API_URL + /api/service/feed?page=1
+    const targetPathAndQuery = req.originalUrl.replace("/api/proxied", "");
+    const url = `${EVENTS_API_URL}${targetPathAndQuery}`;
+
+    try {
+      const response = await fetch(url, {
+        method: req.method,
+        headers: {
+          "Accept": "application/json",
+          "Authorization": `Bearer ${EVENTS_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: ["GET", "HEAD"].includes(req.method) ? undefined : JSON.stringify(req.body),
+      });
+
+      const text = await response.text();
+      if (!response.ok) {
+        let message = response.statusText || "Events API error";
+        try {
+          if (text.startsWith("{") && text.trim().endsWith("}")) {
+            message = (JSON.parse(text) as { message?: string }).message ?? message;
+          }
+        } catch (e) { }
+        return res.status(response.status).json({ message });
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        data = text;
+      }
+      res.status(response.status).json(data);
+    } catch (err) {
+      console.error("Events API generic proxy error:", err);
+      res.status(502).json({ message: "Failed to fetch from events API" });
+    }
+  });
+
   return httpServer;
 }

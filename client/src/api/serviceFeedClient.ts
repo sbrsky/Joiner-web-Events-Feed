@@ -17,15 +17,13 @@ export interface ServiceFeedResponse {
 
 export class ServiceFeedClient {
     private baseUrl: string;
-    private token: string;
 
     constructor() {
-        this.baseUrl = "https://dev.api.getjoiner.com";
-        this.token = "kK5uaQWvGJZtSFob2Yc6LApEHDUILFMiFBzOCMDGt2W690mnytREWQMGyq5rNm99";
+        this.baseUrl = "/api/proxied";
     }
 
     async getFeed(page: number = 1, forWebview: 0 | 1 = 0): Promise<{ events: FeedEvent[]; meta: { current_page: number; last_page: number } }> {
-        const url = new URL(`${this.baseUrl}/api/service/feed`);
+        const url = new URL(`${this.baseUrl}/api/service/feed`, window.location.origin);
         url.searchParams.append("page", page.toString());
         url.searchParams.append("for_webview", forWebview.toString());
         // Arrays are appended with []
@@ -36,7 +34,6 @@ export class ServiceFeedClient {
             method: "GET",
             headers: {
                 "Accept": "application/json",
-                "Authorization": `Bearer ${this.token}`,
             },
         });
 
