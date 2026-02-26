@@ -7,9 +7,11 @@ export interface DetailedEvent extends FeedEvent {
 
 export class EventDetailsClient {
     private baseUrl: string;
+    private token: string;
 
     constructor() {
-        this.baseUrl = "/api/proxied";
+        this.baseUrl = "https://dev.api.getjoiner.com";
+        this.token = "kK5uaQWvGJZtSFob2Yc6LApEHDUILFMiFBzOCMDGt2W690mnytREWQMGyq5rNm99";
     }
 
     async getEventDetails(id: string): Promise<DetailedEvent> {
@@ -18,6 +20,7 @@ export class EventDetailsClient {
             method: "GET",
             headers: {
                 "Accept": "application/json",
+                "Authorization": `Bearer ${this.token}`,
             },
         });
 
