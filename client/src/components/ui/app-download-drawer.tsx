@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { X, Copy, Check } from "lucide-react";
 import { useState, useEffect } from "react";
+import { eventDetails } from "@/api/eventDetailsClient";
+import { QRCodeSVG } from "qrcode.react";
 
 export type DrawerType = "like" | "people" | "join" | "social" | "share" | null;
 
@@ -8,14 +10,28 @@ interface AppDownloadDrawerProps {
     isOpen: boolean;
     onClose: () => void;
     type: DrawerType;
+    eventId?: string | number;
 }
 
-export function AppDownloadDrawer({ isOpen, onClose, type }: AppDownloadDrawerProps) {
+export function AppDownloadDrawer({ isOpen, onClose, type, eventId }: AppDownloadDrawerProps) {
     const [copied, setCopied] = useState(false);
+    const [deepLink, setDeepLink] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!isOpen) setCopied(false);
-    }, [isOpen]);
+        if (!isOpen) {
+            setCopied(false);
+            setDeepLink(null);
+            return;
+        }
+
+        if (eventId) {
+            eventDetails.getDeepLink(eventId)
+                .then(link => setDeepLink(link))
+                .catch(err => console.error("Failed to fetch deep link", err));
+        }
+    }, [isOpen, eventId]);
+
+    const displayLink = deepLink || "https://getjoiner.com/download";
 
     if (!isOpen || !type) return null;
 
@@ -25,7 +41,7 @@ export function AppDownloadDrawer({ isOpen, onClose, type }: AppDownloadDrawerPr
     const isShare = type === "share";
 
     const handleCopyLink = () => {
-        navigator.clipboard.writeText(window.location.href);
+        navigator.clipboard.writeText(displayLink);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -85,7 +101,7 @@ export function AppDownloadDrawer({ isOpen, onClose, type }: AppDownloadDrawerPr
                     <div className="w-full space-y-4 mb-8">
                         <div className="relative group">
                             <div className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 pr-12 text-sm text-gray-600 font-medium truncate shadow-inner">
-                                {window.location.href}
+                                {displayLink}
                             </div>
                             <Button
                                 size="icon"
@@ -103,7 +119,14 @@ export function AppDownloadDrawer({ isOpen, onClose, type }: AppDownloadDrawerPr
                 )}
 
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 shadow-inner flex flex-col items-center mb-8 relative">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&bgcolor=f9fafb&data=http://getjoiner.com/download" alt="App QR" className="w-40 h-40 mix-blend-multiply" />
+                    <QRCodeSVG
+                        value={displayLink}
+                        size={160}
+                        bgColor="#f9fafb"
+                        fgColor="#000000"
+                        className="mix-blend-multiply"
+                        level="Q"
+                    />
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-6">Scan Code to Download</p>
                 </div>
 

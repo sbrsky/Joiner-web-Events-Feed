@@ -36,6 +36,23 @@ export class EventDetailsClient {
             raw: rawEvent
         };
     }
+
+    async getDeepLink(id: string | number): Promise<string> {
+        const url = new URL(`${this.baseUrl}/api/service/events/${id}/deep-link`, typeof window !== "undefined" ? window.location.origin : "http://localhost:5000");
+        const response = await fetch(url.toString(), {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const json = await response.json();
+        return json.deep_link;
+    }
 }
 
 export const eventDetails = new EventDetailsClient();

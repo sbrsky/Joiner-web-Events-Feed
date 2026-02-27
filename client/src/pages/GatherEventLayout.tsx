@@ -339,6 +339,7 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                 isOpen={!!drawerType}
                 type={drawerType}
                 onClose={() => setDrawerType(null)}
+                eventId={event.raw?.id || event.id}
             />
         </div>
     );
