@@ -13,6 +13,27 @@ const DYNAMIC_CATEGORIES = [
 
 export default function EventsWebview() {
   const [activeCategory, setActiveCategory] = useState("For You");
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("selectedLanguages");
+        return saved ? JSON.parse(saved) : ["en"];
+      } catch {
+        return ["en"];
+      }
+    }
+    return ["en"];
+  });
+
+  const toggleLanguage = (lang: string) => {
+    setSelectedLanguages((prev) => {
+      const next = prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang];
+      if (typeof window !== "undefined") {
+        localStorage.setItem("selectedLanguages", JSON.stringify(next));
+      }
+      return next;
+    });
+  };
 
   const featuredQuery = useInfiniteQuery({
     queryKey: ["service-feed-featured"],
@@ -39,13 +60,30 @@ export default function EventsWebview() {
   const topPicks = featuredQuery.data?.pages.flatMap((p) => p.events) ?? [];
   const upcomingEvents = upcomingQuery.data?.pages.flatMap((p) => p.events) ?? [];
 
+  const filterByLanguage = (events: any[]) => {
+    if (selectedLanguages.length === 0) return events;
+    return events.filter((e) => {
+      const eventLangs = e.languages || [];
+      if (eventLangs.length === 0) return true; // Show events with no language specified to avoid fully hiding everything by accident
+      return eventLangs.some((l: string) => selectedLanguages.includes(l));
+    });
+  };
+
+  const topPicksByLang = filterByLanguage(topPicks);
+  const upcomingByLang = filterByLanguage(upcomingEvents);
+
   const filteredTopPicks = activeCategory === "For You"
-    ? topPicks
-    : topPicks.filter(e => e.category === activeCategory);
+    ? topPicksByLang
+    : topPicksByLang.filter(e => e.category === activeCategory);
 
   const filteredUpcoming = activeCategory === "For You"
-    ? upcomingEvents
-    : upcomingEvents.filter(e => e.category === activeCategory);
+    ? upcomingByLang
+    : upcomingByLang.filter(e => e.category === activeCategory);
+
+  const availableLanguages = Array.from(new Set([
+    ...topPicks.flatMap((e) => e.languages || []),
+    ...upcomingEvents.flatMap((e) => e.languages || []),
+  ])).filter(Boolean).sort();
 
   const availableCategoryNames = new Set([
     ...topPicks.map((e) => e.category),
@@ -64,6 +102,9 @@ export default function EventsWebview() {
     topPicks: filteredTopPicks,
     upcomingEvents: filteredUpcoming,
     CATEGORIES: availableCategories,
+    selectedLanguages,
+    availableLanguages,
+    toggleLanguage,
   };
 
   return (

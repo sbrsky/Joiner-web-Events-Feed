@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Info } from "lucide-react";
 
 import { GatherEventLayout } from "./GatherEventLayout";
+import { decodeEventId } from "@/lib/idUtils";
 
 export default function EventPage() {
     const [, params] = useRoute("/event/:id");
-    const id = params?.id;
+    const rawId = params?.id;
+    const id = rawId ? decodeEventId(rawId) : undefined;
 
     const { data: event, isLoading, error } = useQuery({
         queryKey: ["event", id],

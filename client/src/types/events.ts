@@ -13,6 +13,7 @@ export interface FeedEvent {
   description?: string;
   host?: { name: string; avatar: string };
   participants?: { avatar: string }[];
+  languages?: string[];
 }
 
 /** Owner from backend */

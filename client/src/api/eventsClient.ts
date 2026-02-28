@@ -22,6 +22,9 @@ export interface Event {
   is_cancelled: boolean;
   price: number;
   currency: string;
+  latitude: number | null;
+  longitude: number | null;
+  languages: string[];
 }
 
 export interface Statistics {
@@ -50,6 +53,11 @@ interface AllFeedItem {
   status?: string;
   price?: number;
   currency?: string;
+  lat?: number | string | null;
+  lng?: number | string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  languages?: string[];
   [key: string]: unknown;
 }
 
@@ -93,10 +101,10 @@ class ApiClient {
       category_id: item.category_id ?? 0,
       client: item.owner
         ? {
-            id: item.owner.id ?? 0,
-            name: item.owner.name ?? "Unknown",
-            avatar: item.owner.photo ?? "",
-          }
+          id: item.owner.id ?? 0,
+          name: item.owner.name ?? "Unknown",
+          avatar: item.owner.photo ?? "",
+        }
         : { id: 0, name: "Unknown", avatar: "" },
       image: item.photo ?? DEFAULT_IMAGE,
       start_time: item.start_at ?? "",
@@ -108,6 +116,9 @@ class ApiClient {
       is_cancelled: item.status === "cancelled",
       price: item.price ?? 0,
       currency: item.currency ?? "RUB",
+      latitude: item.latitude != null ? Number(item.latitude) : (item.lat != null ? Number(item.lat) : (item.location as any)?.lat != null ? Number((item.location as any).lat) : (item.location as any)?.latitude != null ? Number((item.location as any).latitude) : null),
+      longitude: item.longitude != null ? Number(item.longitude) : (item.lng != null ? Number(item.lng) : (item.location as any)?.lng != null ? Number((item.location as any).lng) : (item.location as any)?.longitude != null ? Number((item.location as any).longitude) : null),
+      languages: Array.isArray(item.languages) ? item.languages : [],
     }));
   }
 

@@ -39,6 +39,7 @@ export function eventToFeedEvent(e: Event): FeedEvent {
     ...(e.description && { description: e.description }),
     host: { name: e.client.name, avatar: e.client.avatar },
     participants: [],
+    languages: Array.isArray(e.languages) ? e.languages : [],
   };
 }
 
@@ -104,6 +105,7 @@ export function mapApiEventToFeedEvent(raw: RawApiEvent, index: number): FeedEve
     ...(description && { description }),
     ...(host && { host }),
     ...(mappedParticipants && mappedParticipants.length > 0 && { participants: mappedParticipants }),
+    languages: Array.isArray(raw.languages) ? raw.languages : [],
   };
 }
 
@@ -115,13 +117,39 @@ function getEventsArray(data: AllFeedResponse): RawApiEvent[] {
   return Array.isArray(list) ? list : [];
 }
 
+export function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
+
 /** Fetch all-feed via eventsClient; returns normalized featured + upcoming for UI */
 export async function fetchAllFeed(clientId = "1"): Promise<{
   featured: FeedEvent[];
   upcoming: FeedEvent[];
 }> {
   const events = await api.getEventsFull(clientId);
-  const all = events.map(eventToFeedEvent);
+
+  const BASE_LAT = 38.7223;
+  const BASE_LNG = -9.1393;
+  const MAX_DISTANCE_KM = 250;
+
+  // Show only events within the 250km radius
+  const validEvents = events.filter((e) => {
+    if (e.latitude != null && e.longitude != null && !isNaN(e.latitude) && !isNaN(e.longitude)) {
+      const distance = getDistanceInKm(BASE_LAT, BASE_LNG, e.latitude, e.longitude);
+      return distance <= MAX_DISTANCE_KM;
+    }
+    return false;
+  });
+
+  const all = validEvents.map(eventToFeedEvent);
   const featured = all.slice(0, 2);
   const upcoming = all.slice(2);
   return { featured, upcoming };

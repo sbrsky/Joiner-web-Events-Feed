@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { encodeEventId } from "@/lib/idUtils";
 
 interface Event {
   id: string;
@@ -126,7 +127,7 @@ export function EventDetailModal({ event, children }: EventDetailModalProps) {
             </div>
 
             <div className="flex gap-3">
-              <Link href={`/event/${event.id}`}>
+              <Link href={`/event/${encodeEventId(event.id)}`}>
                 <Button variant="outline" className="h-14 w-14 rounded-full border-white/20 hover:bg-white/10 p-0 flex items-center justify-center shrink-0">
                   <Share2 className="w-5 h-5 rotate-45 transform" />
                 </Button>

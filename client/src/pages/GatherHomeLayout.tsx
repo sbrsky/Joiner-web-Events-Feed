@@ -1,11 +1,20 @@
 import { useState } from "react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Bell, Search, Filter, Calendar, MapPin, Heart, Sparkles, X } from "lucide-react";
+import { Bell, Search, Filter, Calendar, MapPin, Heart, Sparkles, X, Globe } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuTrigger,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { AppDownloadDrawer, type DrawerType } from "@/components/ui/app-download-drawer";
+import { encodeEventId } from "@/lib/idUtils";
 
 const getEventGroup = (rawDate: string) => {
     if (!rawDate) return "Later";
@@ -48,7 +57,10 @@ export function GatherHomeLayout({
     upcomingQuery,
     topPicks,
     upcomingEvents,
-    CATEGORIES
+    CATEGORIES,
+    selectedLanguages = ["en"],
+    availableLanguages = ["en"],
+    toggleLanguage = () => { },
 }: any) {
     const [drawerType, setDrawerType] = useState<DrawerType>(null);
 
@@ -70,7 +82,33 @@ export function GatherHomeLayout({
                 {/* Categories */}
                 <div className="px-0">
                     <ScrollArea className="w-full whitespace-nowrap">
-                        <div className="flex w-max space-x-3 px-6 pb-2">
+                        <div className="flex w-max items-center space-x-3 px-6 pb-2">
+                            {/* Languages Dropdown */}
+                            {availableLanguages.length > 0 && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${selectedLanguages.length > 0 ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100 hover:text-gray-900"}`}>
+                                            <Globe className={`w-3.5 h-3.5 ${selectedLanguages.length > 0 ? "text-orange-500" : ""}`} />
+                                            Language {selectedLanguages.length > 0 ? `(${selectedLanguages.length})` : ""}
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-48 ml-4 z-[100]" align="start">
+                                        <DropdownMenuLabel>Filter by Language</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {availableLanguages.map((lang: string) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={lang}
+                                                checked={selectedLanguages.includes(lang)}
+                                                onCheckedChange={() => toggleLanguage(lang)}
+                                                className="uppercase"
+                                            >
+                                                {lang}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+
                             {CATEGORIES.map((cat: any) => (
                                 <button
                                     key={cat.name}
@@ -116,7 +154,7 @@ export function GatherHomeLayout({
                         <div className="overflow-x-auto no-scrollbar snap-x snap-mandatory px-6 pb-4 flex gap-4">
                             {topPicks.length > 0 ? (
                                 topPicks.map((event: any) => (
-                                    <Link key={event.id} href={`/event/${event.id}`}>
+                                    <Link key={event.id} href={`/event/${encodeEventId(event.id)}`}>
                                         <div className="relative w-[340px] h-[400px] shrink-0 rounded-[2rem] overflow-hidden snap-center group cursor-pointer shadow-sm hover:shadow-md transition-shadow bg-black">
                                             {/* Full Height Background Image */}
                                             <img
@@ -215,7 +253,7 @@ export function GatherHomeLayout({
                                                 {!showHeader && (
                                                     <div className="absolute -left-[17px] top-6 w-1.5 h-1.5 rounded-full bg-gray-300 z-10"></div>
                                                 )}
-                                                <Link href={`/event/${event.id}`}>
+                                                <Link href={`/event/${encodeEventId(event.id)}`}>
                                                     <div className="bg-white rounded-3xl p-3 flex gap-4 hover:shadow-md border border-gray-100 transition-all cursor-pointer group">
                                                         <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 bg-gray-100 border border-gray-100/50">
                                                             <img

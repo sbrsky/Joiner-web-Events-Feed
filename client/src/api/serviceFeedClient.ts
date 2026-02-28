@@ -1,6 +1,6 @@
 // For dev purposes: Uses the dev.api.getjoiner.com service feed endpoint
 import { FeedEvent, RawApiEvent } from "@/types/events";
-import { mapApiEventToFeedEvent } from "./feed";
+import { mapApiEventToFeedEvent, getDistanceInKm } from "./feed";
 
 export interface ServiceFeedResponse {
     data?: RawApiEvent[];
@@ -44,7 +44,26 @@ export class ServiceFeedClient {
         const json: ServiceFeedResponse = await response.json();
 
         const rawEvents = json.data || json.events || (Array.isArray(json) ? json : []);
-        const events = rawEvents.map((raw: RawApiEvent, index: number) => mapApiEventToFeedEvent(raw, index));
+
+        const BASE_LAT = 38.7223;
+        const BASE_LNG = -9.1393;
+        const MAX_DISTANCE_KM = 250;
+
+        const validEvents = rawEvents.filter((raw: RawApiEvent) => {
+            const latRaw = raw.latitude ?? raw.lat ?? (raw.location as any)?.lat ?? (raw.location as any)?.latitude;
+            const lngRaw = raw.longitude ?? raw.lng ?? (raw.location as any)?.lng ?? (raw.location as any)?.longitude;
+
+            const lat = latRaw != null ? Number(latRaw) : null;
+            const lng = lngRaw != null ? Number(lngRaw) : null;
+
+            if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
+                const distance = getDistanceInKm(BASE_LAT, BASE_LNG, lat, lng);
+                return distance <= MAX_DISTANCE_KM;
+            }
+            return false;
+        });
+
+        const events = validEvents.map((raw: RawApiEvent, index: number) => mapApiEventToFeedEvent(raw, index));
 
         const meta = json.meta || {
             current_page: json.current_page || page,

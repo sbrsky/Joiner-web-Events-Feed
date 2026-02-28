@@ -1,8 +1,16 @@
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { FeaturedCard } from "@/components/ui/featured-card";
 import { EventCard } from "@/components/ui/event-card";
-import { Bell, Search, Filter, Sparkles, Zap, Flame } from "lucide-react";
+import { Bell, Search, Filter, Sparkles, Zap, Flame, Globe } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuTrigger,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 export const CATEGORIES = [
     { name: "For You", icon: Sparkles },
@@ -19,7 +27,10 @@ export function JoinerHomeLayout({
     featuredQuery,
     upcomingQuery,
     topPicks,
-    upcomingEvents
+    upcomingEvents,
+    selectedLanguages = ["en"],
+    availableLanguages = ["en"],
+    toggleLanguage = () => { },
 }: any) {
     return (
         <div className="min-h-screen bg-background text-foreground pb-20 font-sans selection:bg-primary/20">
@@ -46,8 +57,34 @@ export function JoinerHomeLayout({
                 {/* Categories */}
                 <div className="px-0">
                     <ScrollArea className="w-full whitespace-nowrap">
-                        <div className="flex w-max space-x-3 px-6 pb-2">
-                            {CATEGORIES.map((cat) => (
+                        <div className="flex w-max items-center space-x-3 px-6 pb-2">
+                            {/* Languages Dropdown */}
+                            {availableLanguages.length > 0 && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${selectedLanguages.length > 0 ? "bg-primary text-white shadow-[0_0_15px_rgba(124,58,237,0.3)]" : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"}`}>
+                                            <Globe className="w-3.5 h-3.5" />
+                                            Language {selectedLanguages.length > 0 ? `(${selectedLanguages.length})` : ""}
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-48 ml-4 z-[100]" align="start">
+                                        <DropdownMenuLabel>Filter by Language</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {availableLanguages.map((lang: string) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={lang}
+                                                checked={selectedLanguages.includes(lang)}
+                                                onCheckedChange={() => toggleLanguage(lang)}
+                                                className="uppercase"
+                                            >
+                                                {lang}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+
+                            {CATEGORIES.map((cat: any) => (
                                 <button
                                     key={cat.name}
                                     onClick={() => setActiveCategory(cat.name)}
