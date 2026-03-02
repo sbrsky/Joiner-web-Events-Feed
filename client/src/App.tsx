@@ -3,16 +3,19 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 import NotFound from "@/pages/not-found";
+import AuthPage from "@/pages/auth-page";
 import EventsWebview from "@/pages/events-webview";
-
 import EventPage from "@/pages/event-page";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={EventsWebview} />
-      <Route path="/event/:id" component={EventPage} />
+      <ProtectedRoute path="/" component={EventsWebview} />
+      <ProtectedRoute path="/event/:id" component={EventPage} />
+      <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -21,10 +24,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
