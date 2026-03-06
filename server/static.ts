@@ -12,8 +12,38 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("/{*path}", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // serve the index.html with injected environment variables for the client
+  app.use("*", async (req, res) => {
+    const indexPath = path.resolve(distPath, "index.html");
+    if (!fs.existsSync(indexPath)) {
+      return res.status(404).send("Not found");
+    }
+
+    try {
+      let html = await fs.promises.readFile(indexPath, "utf-8");
+
+      // Inject runtime environment variables that the client needs
+      const env = {
+        VITE_BRANCH_KEY: process.env.VITE_BRANCH_KEY || process.env.BRANCH_KEY,
+        VITE_BRANCH_LINK_DOMAIN: process.env.VITE_BRANCH_LINK_DOMAIN || process.env.BRANCH_LINK_DOMAIN,
+        VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY,
+        VITE_FIREBASE_AUTH_DOMAIN: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+        VITE_FIREBASE_PROJECT_ID: process.env.VITE_FIREBASE_PROJECT_ID,
+        VITE_FIREBASE_APP_ID: process.env.VITE_FIREBASE_APP_ID,
+      };
+
+      const envScript = `
+        <script>
+          window.ENV = ${JSON.stringify(env)};
+        </script>
+      `;
+
+      html = html.replace("</head>", `${envScript}</head>`);
+      res.setHeader("Content-Type", "text/html");
+      res.send(html);
+    } catch (e) {
+      console.error("Error serving index.html:", e);
+      res.status(500).send("Internal Server Error");
+    }
   });
 }

@@ -1,6 +1,6 @@
 import branch from 'branch-sdk';
 
-const BRANCH_KEY = import.meta.env.VITE_BRANCH_KEY;
+const BRANCH_KEY = import.meta.env.VITE_BRANCH_KEY || (window as any).ENV?.VITE_BRANCH_KEY || (window as any).ENV?.BRANCH_KEY;
 
 let branchInitialized = false;
 
