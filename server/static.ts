@@ -13,7 +13,7 @@ export function serveStatic(app: Express) {
   app.use(express.static(distPath));
 
   // serve the index.html with injected environment variables for the client
-  app.use("*", async (req, res) => {
+  app.use("/{*path}", async (req, res) => {
     const indexPath = path.resolve(distPath, "index.html");
     if (!fs.existsSync(indexPath)) {
       return res.status(404).send("Not found");
