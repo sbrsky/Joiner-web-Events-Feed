@@ -1,5 +1,4 @@
 import type { FeedEvent, RawApiEvent, AllFeedResponse } from "@/types/events";
-import { api, type Event } from "./eventsClient";
 import { getCategoryName } from "@/lib/categories";
 
 const DEFAULT_IMAGE = "/assets/party.png";
@@ -9,7 +8,7 @@ function formatDate(value: string | undefined): string {
   try {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleString(undefined, {
+    return d.toLocaleString('en-US', {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -21,27 +20,6 @@ function formatDate(value: string | undefined): string {
   }
 }
 
-/** Map Event (eventsClient shape) to FeedEvent (UI cards) */
-export function eventToFeedEvent(e: Event): FeedEvent {
-  const spotsLeft =
-    e.max_participants != null ? Math.max(0, e.max_participants - e.participants_count) : 0;
-  return {
-    id: String(e.id),
-    title: e.title,
-    image: e.image,
-    category: getCategoryName(e.category_id),
-    date: formatDate(e.start_time),
-    rawDate: e.start_time ?? "",
-    location: e.location_name,
-    attendees: e.participants_count,
-    spotsLeft,
-    tags: [],
-    ...(e.description && { description: e.description }),
-    host: { name: e.client.name, avatar: e.client.avatar },
-    participants: [],
-    languages: Array.isArray(e.languages) ? e.languages : [],
-  };
-}
 
 function getEventImage(raw: RawApiEvent): string {
   let img = DEFAULT_IMAGE;
@@ -127,30 +105,4 @@ export function getDistanceInKm(lat1: number, lon1: number, lat2: number, lon2: 
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in km
-}
-
-/** Fetch all-feed via eventsClient; returns normalized featured + upcoming for UI */
-export async function fetchAllFeed(clientId = "1"): Promise<{
-  featured: FeedEvent[];
-  upcoming: FeedEvent[];
-}> {
-  const events = await api.getEventsFull(clientId);
-
-  const BASE_LAT = 38.7223;
-  const BASE_LNG = -9.1393;
-  const MAX_DISTANCE_KM = 250;
-
-  // Show only events within the 250km radius
-  const validEvents = events.filter((e) => {
-    if (e.latitude != null && e.longitude != null && !isNaN(e.latitude) && !isNaN(e.longitude)) {
-      const distance = getDistanceInKm(BASE_LAT, BASE_LNG, e.latitude, e.longitude);
-      return distance <= MAX_DISTANCE_KM;
-    }
-    return false;
-  });
-
-  const all = validEvents.map(eventToFeedEvent);
-  const featured = all.slice(0, 2);
-  const upcoming = all.slice(2);
-  return { featured, upcoming };
 }

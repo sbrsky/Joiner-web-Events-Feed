@@ -3,14 +3,113 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
     Calendar, MapPin, Share2, Heart,
-    ChevronLeft, Instagram, ArrowRight, Moon, X
+    ChevronLeft, Instagram, ArrowRight, Moon, X, Sparkles, Globe
 } from "lucide-react";
 import { AppDownloadDrawer, type DrawerType } from "@/components/ui/app-download-drawer";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
-export function GatherEventLayout({ event, month, day, timeString, endTimeString, participants, minPrice, currency }: any) {
+const getBroadLocation = (fullLoc: string) => {
+    if (!fullLoc || fullLoc === "TBA") return "Lisbon, Portugal";
+    const parts = fullLoc.split(',');
+    if (parts.length > 2) {
+        // Take up to 3 segments from the end (District, City, Country)
+        return parts.slice(-3).join(',').trim();
+    } else if (parts.length > 1) {
+        return parts.slice(-2).join(',').trim();
+    }
+    return fullLoc;
+};
+
+function RegistrationCard({
+    event, isFree, minPrice, currency, timeString, endTimeString,
+    isAuth, participationStatus, handleJoin, isJoining, setDrawerType
+}: any) {
+    const isApproved = participationStatus?.status === "approved";
+
+    return (
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden p-1">
+            <div className="p-5 space-y-5">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-900">Registration</h2>
+                        <p className="text-sm text-gray-500 font-medium mt-0.5">
+                            {isFree ? "Free" : `${minPrice} ${currency}`} • Approval Required
+                        </p>
+                    </div>
+                    <div className="bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
+                        • {event.spotsLeft || 0} spots left
+                    </div>
+                </div>
+
+                {/* Date/Location Box inside Reg Box */}
+                <div className="bg-gray-50 rounded-xl p-5 space-y-5 border border-gray-100/50">
+                    <div className="flex gap-4">
+                        <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-bold text-gray-900">{event.date}</span>
+                            <span className="text-xs text-gray-500 font-medium mt-0.5">{timeString} {endTimeString ? `- ${endTimeString}` : ""}</span>
+                        </div>
+                    </div>
+                    <div className="flex gap-4">
+                        <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-bold text-gray-900">
+                                {isApproved ? ((event.raw?.place as string) || event.location) : "Exact Location Hidden"}
+                            </span>
+                            <span className="text-xs text-gray-500 font-medium mt-0.5">
+                                {isApproved
+                                    ? (event.location !== "TBA" ? event.location : "")
+                                    : getBroadLocation(event.location)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <Button
+                    className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-black font-bold text-base transition-colors group disabled:bg-gray-400 disabled:opacity-100"
+                    onClick={() => {
+                        if (!isAuth) {
+                            setDrawerType("join");
+                        } else if (!participationStatus) {
+                            handleJoin();
+                        }
+                    }}
+                    disabled={isJoining || !!participationStatus}
+                >
+                    {!isAuth ? (
+                        <>Request to Join <ArrowRight className="w-4 h-4 ml-2 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" /></>
+                    ) : (
+                        isJoining ? "Joining..." :
+                            !participationStatus ? "Join Event" :
+                                participationStatus.status === "pending" ? "Request Pending" :
+                                    participationStatus.status === "approved" ? "Joined" :
+                                        participationStatus.status === "invited" ? "Invited" :
+                                            participationStatus.status === "canceled" ? "Canceled" :
+                                                participationStatus.status === "rejected" ? "Rejected" :
+                                                    "Joined"
+                    )}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+export function GatherEventLayout({
+    event, month, day, timeString, endTimeString, participants, minPrice, currency,
+    participationStatus, handleJoin, isJoining, isAuth
+}: any) {
     const [drawerType, setDrawerType] = useState<DrawerType>(null);
+    const [isHostAboutOpen, setIsHostAboutOpen] = useState(false);
+    const { user, loginWithGoogle, logout } = useAuth();
     const isFree = minPrice === 0;
-    const mapQuery = encodeURIComponent(`${event.raw?.place || ""} ${event.location !== "TBA" ? event.location : ""}`.trim());
+    const isApproved = participationStatus?.status === "approved";
+    const displayLocation = isApproved
+        ? ((event.raw?.place as string) || event.location)
+        : getBroadLocation(event.location);
+
+    const mapQuery = encodeURIComponent(displayLocation.trim());
+    const mapZoom = isApproved ? 16 : 13;
 
     return (
         <div className="min-h-screen bg-white text-gray-900 font-sans pb-20 selection:bg-black/10">
@@ -29,6 +128,29 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
+                        {user ? (
+                            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-orange-50 border border-orange-100 text-orange-600 text-xs font-semibold">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Personalised
+                            </div>
+                        ) : (
+                            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 border border-gray-200 text-gray-600 text-xs font-semibold">
+                                <Globe className="w-3.5 h-3.5" />
+                                Public
+                            </div>
+                        )}
+                        {/* {user ? (
+                            <div className="flex items-center gap-2 border border-gray-200 rounded-full pr-4 pl-1 py-1 hover:bg-gray-50 transition-colors cursor-pointer" onClick={logout}>
+                                <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
+                                    <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt={user.displayName || "User"} className="w-full h-full object-cover" />
+                                </div>
+                                <span className="text-sm font-semibold text-gray-700">{user.displayName?.split(" ")[0]}</span>
+                            </div>
+                        ) : (
+                            <Button variant="default" className="rounded-full bg-gray-900 border border-gray-900 text-white hover:bg-gray-800" onClick={loginWithGoogle}>
+                                Login
+                            </Button>
+                        )} */}
                     </div>
                 </div>
             </header>
@@ -128,8 +250,11 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                             <div className="space-y-4">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Hosted By</h3>
 
-                                <div className="flex items-center gap-4 px-1">
-                                    <div className="h-12 w-12 rounded-full overflow-hidden bg-orange-200 shrink-0 border border-gray-100">
+                                <div
+                                    className="flex items-center gap-4 px-1 cursor-pointer group/host"
+                                    onClick={() => setIsHostAboutOpen(!isHostAboutOpen)}
+                                >
+                                    <div className="h-12 w-12 rounded-full overflow-hidden bg-orange-200 shrink-0 border border-gray-100 transition-transform group-hover/host:scale-105">
                                         {event.host?.avatar ? (
                                             <img src={event.host.avatar} className="w-full h-full object-cover" alt={event.host.name} />
                                         ) : (
@@ -139,12 +264,12 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                                         )}
                                     </div>
                                     <div className="flex flex-col flex-1 min-w-0">
-                                        <span className="text-base font-bold text-gray-900 truncate">
+                                        <span className="text-base font-bold text-gray-900 truncate group-hover/host:text-orange-600 transition-colors">
                                             {event.host?.name || "Unknown Host"}
                                         </span>
                                         <span className="text-sm text-gray-500">Event Organizer</span>
                                     </div>
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                         {((event.raw?.owner as any)?.instagram?.username || true) && (
                                             <Button
                                                 variant="ghost"
@@ -166,9 +291,29 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                                     </div>
                                 </div>
 
-                                <p className="text-sm text-gray-600 leading-relaxed px-1">
+                                <p className={cn(
+                                    "text-sm text-gray-600 leading-relaxed px-1 transition-all duration-300 overflow-hidden",
+                                    !isHostAboutOpen ? "max-h-0 opacity-0 lg:max-h-none lg:opacity-100" : "max-h-40 opacity-100"
+                                )}>
                                     {(event.raw?.owner as any)?.about || "I'm ready to invite everybody, let's have some fun!"}
                                 </p>
+                            </div>
+
+                            {/* Mobile-only Registration Box (displayed right under host) */}
+                            <div className="lg:hidden mt-2">
+                                <RegistrationCard
+                                    event={event}
+                                    isFree={isFree}
+                                    minPrice={minPrice}
+                                    currency={currency}
+                                    timeString={timeString}
+                                    endTimeString={endTimeString}
+                                    isAuth={isAuth}
+                                    participationStatus={participationStatus}
+                                    handleJoin={handleJoin}
+                                    isJoining={isJoining}
+                                    setDrawerType={setDrawerType}
+                                />
                             </div>
 
 
@@ -230,51 +375,21 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                             </div>
                         </div>
 
-                        {/* Registration Box */}
-                        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden p-1">
-                            <div className="p-5 space-y-5">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div>
-                                        <h2 className="text-lg font-bold text-gray-900">Registration</h2>
-                                        <p className="text-sm text-gray-500 font-medium mt-0.5">
-                                            {isFree ? "Free" : `${minPrice} ${currency}`} • Approval Required
-                                        </p>
-                                    </div>
-                                    <div className="bg-orange-50 text-orange-600 border border-orange-100 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
-                                        • {event.spotsLeft || 0} spots left
-                                    </div>
-                                </div>
-
-                                {/* Date/Location Box inside Reg Box */}
-                                <div className="bg-gray-50 rounded-xl p-5 space-y-5 border border-gray-100/50">
-                                    <div className="flex gap-4">
-                                        <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-gray-900">{event.date}</span>
-                                            <span className="text-xs text-gray-500 font-medium mt-0.5">{timeString} {endTimeString ? `- ${endTimeString}` : ""}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-bold text-gray-900">
-                                                {(event.raw?.place as string) || "Register to See Address"}
-                                            </span>
-                                            <span className="text-xs text-gray-500 font-medium mt-0.5">
-                                                {event.location !== "TBA" ? event.location : "Location hidden"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <Button
-                                    className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-black font-bold text-base transition-colors group"
-                                    onClick={() => setDrawerType("join")}
-                                >
-                                    Request to Join
-                                    <ArrowRight className="w-4 h-4 ml-2 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                                </Button>
-                            </div>
+                        {/* Desktop Registration Box */}
+                        <div className="hidden lg:block">
+                            <RegistrationCard
+                                event={event}
+                                isFree={isFree}
+                                minPrice={minPrice}
+                                currency={currency}
+                                timeString={timeString}
+                                endTimeString={endTimeString}
+                                isAuth={isAuth}
+                                participationStatus={participationStatus}
+                                handleJoin={handleJoin}
+                                isJoining={isJoining}
+                                setDrawerType={setDrawerType}
+                            />
                         </div>
 
                         {/* About Event */}
@@ -304,14 +419,18 @@ export function GatherEventLayout({ event, month, day, timeString, endTimeString
                                         height="100%"
                                         className="w-full h-full border-0 grayscale opacity-90 contrast-125"
                                         loading="lazy"
-                                        src={`https://maps.google.com/maps?q=${mapQuery}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+                                        src={`https://maps.google.com/maps?q=${mapQuery}&t=&z=${mapZoom}&ie=UTF8&iwloc=&output=embed`}
                                     />
                                 </div>
 
                                 <div className="p-4 bg-white flex items-start justify-between gap-4">
                                     <div>
-                                        <h4 className="text-sm font-bold text-gray-900">{(event.raw?.place as string) || "Register to See Address"}</h4>
-                                        <p className="text-xs text-gray-500 mt-0.5">{event.location}</p>
+                                        <h4 className="text-sm font-bold text-gray-900">
+                                            {isApproved ? ((event.raw?.place as string) || event.location) : "Exact Location Hidden"}
+                                        </h4>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                            {isApproved ? event.location : getBroadLocation(event.location)}
+                                        </p>
                                     </div>
                                     <a href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-gray-900 hover:underline shrink-0">
                                         Get Directions

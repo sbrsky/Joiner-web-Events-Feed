@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AppDownloadDrawer, type DrawerType } from "@/components/ui/app-download-drawer";
 import { encodeEventId } from "@/lib/idUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 const getEventGroup = (rawDate: string) => {
     if (!rawDate) return "Later";
@@ -55,6 +56,8 @@ export function GatherHomeLayout({
     setActiveCategory,
     featuredQuery,
     upcomingQuery,
+    tomorrowQuery,
+    laterQuery,
     topPicks,
     upcomingEvents,
     CATEGORIES,
@@ -63,6 +66,7 @@ export function GatherHomeLayout({
     toggleLanguage = () => { },
 }: any) {
     const [drawerType, setDrawerType] = useState<DrawerType>(null);
+    const { user, loginWithGoogle, logout } = useAuth();
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 pb-20 font-sans selection:bg-orange-100">
@@ -74,6 +78,29 @@ export function GatherHomeLayout({
                         Joiner.
                     </div>
                     <div className="flex items-center gap-3">
+                        {user ? (
+                            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-orange-50 border border-orange-100 text-orange-600 text-xs font-semibold">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                Personalised
+                            </div>
+                        ) : (
+                            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 border border-gray-200 text-gray-600 text-xs font-semibold">
+                                <Globe className="w-3.5 h-3.5" />
+                                Public
+                            </div>
+                        )}
+                        {/* {user ? (
+                            <div className="flex items-center gap-2 border border-gray-200 rounded-full pr-4 pl-1 py-1 hover:bg-gray-50 transition-colors cursor-pointer" onClick={logout}>
+                                <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
+                                    <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt={user.displayName || "User"} className="w-full h-full object-cover" />
+                                </div>
+                                <span className="text-sm font-semibold text-gray-700">{user.displayName?.split(" ")[0]}</span>
+                            </div>
+                        ) : (
+                            <Button variant="default" className="rounded-full bg-gray-900 border border-gray-900 text-white hover:bg-gray-800" onClick={loginWithGoogle}>
+                                Login
+                            </Button>
+                        )} */}
                     </div>
                 </div>
             </header>
@@ -87,9 +114,12 @@ export function GatherHomeLayout({
                             {availableLanguages.length > 0 && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <button className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${selectedLanguages.length > 0 ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100 hover:text-gray-900"}`}>
-                                            <Globe className={`w-3.5 h-3.5 ${selectedLanguages.length > 0 ? "text-orange-500" : ""}`} />
-                                            Language {selectedLanguages.length > 0 ? `(${selectedLanguages.length})` : ""}
+                                        <button className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${selectedLanguages.filter((l: string) => availableLanguages.includes(l)).length > 0 ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-100 hover:text-gray-900"}`}>
+                                            <Globe className={`w-3.5 h-3.5 ${selectedLanguages.filter((l: string) => availableLanguages.includes(l)).length > 0 ? "text-orange-500" : ""}`} />
+                                            Language {(() => {
+                                                const count = selectedLanguages.filter((l: string) => availableLanguages.includes(l)).length;
+                                                return count > 0 ? `(${count})` : "";
+                                            })()}
                                         </button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent className="w-48 ml-4 z-[100]" align="start">
@@ -134,7 +164,7 @@ export function GatherHomeLayout({
                 {/* Top Picks Carousel */}
                 <section className="space-y-4">
                     <div className="px-6 flex items-center justify-between">
-                        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Don't Miss Out 🔥</h2>
+                        <h2 className="text-xl font-bold text-gray-900 tracking-tight">Editors Choice 🔥</h2>
                     </div>
 
                     {featuredQuery.error && (
@@ -223,6 +253,8 @@ export function GatherHomeLayout({
                         </button>
                     </div>
 
+                    {/* Timeline Tabs Removed */}
+
                     {upcomingQuery.isLoading ? (
                         <div className="flex flex-col gap-4">
                             {[1, 2, 3].map((i) => (
@@ -238,7 +270,9 @@ export function GatherHomeLayout({
                                 (() => {
                                     let currentGroup = "";
                                     return upcomingEvents.map((event: any) => {
-                                        const group = getEventGroup(event.rawDate);
+                                        const group = event.apiGroup
+                                            ? event.apiGroup.charAt(0).toUpperCase() + event.apiGroup.slice(1).replace('_', ' ')
+                                            : getEventGroup(event.rawDate);
                                         const showHeader = group !== currentGroup;
                                         if (showHeader) currentGroup = group;
 
@@ -300,7 +334,27 @@ export function GatherHomeLayout({
                                     disabled={upcomingQuery.isFetchingNextPage}
                                     className="w-full h-12 mt-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-bold text-gray-600 transition-colors"
                                 >
-                                    {upcomingQuery.isFetchingNextPage ? "Loading..." : "Load More"}
+                                    {upcomingQuery.isFetchingNextPage ? "Loading Today..." : "More Today"}
+                                </button>
+                            )}
+
+                            {tomorrowQuery?.hasNextPage && (
+                                <button
+                                    onClick={() => tomorrowQuery.fetchNextPage()}
+                                    disabled={tomorrowQuery.isFetchingNextPage}
+                                    className="w-full h-12 mt-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-bold text-gray-600 transition-colors"
+                                >
+                                    {tomorrowQuery.isFetchingNextPage ? "Loading Tomorrow..." : "More Tomorrow"}
+                                </button>
+                            )}
+
+                            {laterQuery?.hasNextPage && (
+                                <button
+                                    onClick={() => laterQuery.fetchNextPage()}
+                                    disabled={laterQuery.isFetchingNextPage}
+                                    className="w-full h-12 mt-4 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-bold text-gray-600 transition-colors"
+                                >
+                                    {laterQuery.isFetchingNextPage ? "Loading Later..." : "More Later"}
                                 </button>
                             )}
                         </div>

@@ -5,22 +5,48 @@ import { eventDetails } from "@/api/eventDetailsClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Info } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 import { GatherEventLayout } from "./GatherEventLayout";
 import { decodeEventId } from "@/lib/idUtils";
 
 export default function EventPage() {
+    const { user, loading: authLoading } = useAuth();
+    const isAuth = !!user;
+
     const [, params] = useRoute("/event/:id");
     const rawId = params?.id;
     const id = rawId ? decodeEventId(rawId) : undefined;
 
-    const { data: event, isLoading, error } = useQuery({
-        queryKey: ["event", id],
-        queryFn: () => id ? eventDetails.getEventDetails(id) : Promise.reject("No ID"),
-        enabled: !!id,
+    const { data: event, isLoading: eventLoading, error } = useQuery({
+        queryKey: ["event", id, isAuth],
+        queryFn: () => id ? eventDetails.getEventDetails(id, isAuth) : Promise.reject("No ID"),
+        enabled: !!id && !authLoading,
     });
 
-    if (isLoading) {
+    const { data: participationStatus, refetch: refetchParticipationStatus } = useQuery({
+        queryKey: ["participation-status", id, isAuth],
+        queryFn: () => id ? eventDetails.getParticipationStatus(id) : Promise.resolve(null),
+        enabled: !!id && isAuth && !authLoading,
+    });
+
+    const [isJoining, setIsJoining] = useState(false);
+
+    const handleJoin = async () => {
+        if (!id || !isAuth) return;
+        try {
+            setIsJoining(true);
+            await eventDetails.joinEvent(id);
+            await refetchParticipationStatus();
+        } catch (e) {
+            console.error("Failed to join event", e);
+            // TODO: toast error or show message
+        } finally {
+            setIsJoining(false);
+        }
+    };
+
+    if (authLoading || eventLoading) {
         return (
             <div className="min-h-screen bg-[#111] text-foreground p-8 flex justify-center">
                 <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-[380px_1fr] gap-12">
@@ -67,7 +93,10 @@ export default function EventPage() {
     const minPrice = prices.length > 0 ? Math.min(...prices.map(p => p.price)) : 0;
     const currency = (event.raw?.currency as string) || "EUR";
 
-    const commonProps = { event, month, day, timeString, endTimeString, participants, minPrice, currency };
+    const commonProps = {
+        event, month, day, timeString, endTimeString, participants, minPrice, currency,
+        participationStatus, handleJoin, isJoining, isAuth
+    };
 
     return (
         <GatherEventLayout {...commonProps} />

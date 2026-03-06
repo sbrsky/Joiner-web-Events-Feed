@@ -1,18 +1,19 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
 
-const EVENTS_API_URL = (process.env.EVENTS_API_URL || "https://dev.api.getjoiner.com").replace(/\/$/, "");
-let rawApiKey = process.env.EVENTS_API_KEY || "kK5uaQWvGJZtSFob2Yc6LApEHDUILFMiFBzOCMDGt2W690mnytREWQMGyq5rNm99";
-rawApiKey = rawApiKey.replace(/^["']|["']$/g, '').trim();
+const EVENTS_API_URL = (process.env.EVENTS_API_URL || "https://api.getjoiner.com").replace(/\/$/, "");
+const rawApiKey = process.env.EVENTS_API_KEY;
+if (!rawApiKey) {
+  console.error("FATAL: EVENTS_API_KEY environment variable is required");
+  process.exit(1);
+}
 const AUTH_HEADER = rawApiKey.toLowerCase().startsWith('bearer ') ? rawApiKey : `Bearer ${rawApiKey}`;
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  setupAuth(app);
   // Enforce CORS to ensure only our frontend can reach the proxy API
   app.use("/api", (req, res, next) => {
     const origin = req.headers.origin;
@@ -32,7 +33,7 @@ export async function registerRoutes(
         res.setHeader("Access-Control-Allow-Origin", allowedOrigins[0]);
       }
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, session_id, request_id, J-LOCALE");
     }
 
     if (req.method === "OPTIONS") {
@@ -42,31 +43,6 @@ export async function registerRoutes(
     next();
   });
 
-  // Proxy to real events API (all-feed)
-  app.get("/api/all-feed", async (req, res) => {
-    const clientId = req.query.client_id ?? "1";
-    const url = `${EVENTS_API_URL}/api/all-feed?client_id=${clientId}`;
-    try {
-      const response = await fetch(url, {
-        headers: {
-          Authorization: AUTH_HEADER,
-        },
-      });
-      const text = await response.text();
-      if (!response.ok) {
-        const message =
-          text.startsWith("{") && text.trim().endsWith("}")
-            ? (JSON.parse(text) as { message?: string }).message ?? response.statusText
-            : response.statusText || "Events API error";
-        return res.status(response.status).json({ message });
-      }
-      const data = JSON.parse(text) as unknown;
-      res.json(data);
-    } catch (err) {
-      console.error("Events API proxy error:", err);
-      res.status(502).json({ message: "Failed to fetch events feed" });
-    }
-  });
 
   // Generic proxy to forward requests to the real API and append the secure API key
   app.use("/api/proxied", async (req, res) => {
@@ -74,14 +50,15 @@ export async function registerRoutes(
     const url = `${EVENTS_API_URL}${targetPathAndQuery}`;
 
     try {
-      console.log(`[PROXY] Fetching: ${url}`);
-
       const response = await fetch(url, {
         method: req.method,
         headers: {
           "Accept": "application/json",
-          "Authorization": AUTH_HEADER,
+          "Authorization": req.headers.authorization || AUTH_HEADER,
           "Content-Type": "application/json",
+          "session_id": req.headers.session_id as string || "",
+          "request_id": req.headers.request_id as string || "",
+          "J-LOCALE": req.headers["j-locale"] as string || "en",
         },
         body: ["GET", "HEAD"].includes(req.method) ? undefined : JSON.stringify(req.body),
       });
@@ -89,7 +66,6 @@ export async function registerRoutes(
       const text = await response.text();
 
       if (!response.ok) {
-        console.error(`[PROXY FAIL] ${response.status} ${response.statusText} for ${url}`);
         let message = response.statusText;
         try {
           if (text.startsWith("{") && text.trim().endsWith("}")) {

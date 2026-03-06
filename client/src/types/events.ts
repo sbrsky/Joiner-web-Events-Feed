@@ -14,6 +14,7 @@ export interface FeedEvent {
   host?: { name: string; avatar: string };
   participants?: { avatar: string }[];
   languages?: string[];
+  apiGroup?: string;
 }
 
 /** Owner from backend */

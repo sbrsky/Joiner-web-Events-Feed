@@ -7,7 +7,8 @@ export function encodeEventId(id: string | number): string {
 export function decodeEventId(encodedId: string): string {
     if (!encodedId) return encodedId;
     try {
-        let base64 = encodedId.replace(/-/g, '+').replace(/_/g, '/');
+        const decodedUri = decodeURIComponent(encodedId);
+        let base64 = decodedUri.replace(/-/g, '+').replace(/_/g, '/');
         while (base64.length % 4) {
             base64 += '=';
         }
