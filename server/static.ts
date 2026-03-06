@@ -10,7 +10,8 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // Disable default index.html serving to ensure our injection logic is always used
+  app.use(express.static(distPath, { index: false }));
 
   // serve the index.html with injected environment variables for the client
   app.use("/{*path}", async (req, res) => {
@@ -35,6 +36,7 @@ export function serveStatic(app: Express) {
       const envScript = `
         <script>
           window.ENV = ${JSON.stringify(env)};
+          console.log('[Joiner] Runtime environment injected:', !!window.ENV?.VITE_BRANCH_KEY ? 'Success' : 'Missing Keys');
         </script>
       `;
 

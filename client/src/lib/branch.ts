@@ -9,11 +9,13 @@ export const initBranch = (): Promise<void> => {
 
     return new Promise((resolve, reject) => {
         if (!BRANCH_KEY) {
-            console.warn('VITE_BRANCH_KEY is not defined. Branch SDK will not work.');
+            console.warn('[Joiner] Branch key missing. Checked import.meta.env and window.ENV.');
             // We resolve anyway so the app doesn't crash, but deep links will fail gracefully
             resolve();
             return;
         }
+
+        console.log('[Joiner] Initializing Branch with key:', BRANCH_KEY.substring(0, 8) + '...');
 
         branch.init(BRANCH_KEY, {}, (err: any) => {
             if (err) {
