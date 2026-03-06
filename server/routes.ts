@@ -3,10 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 
 const EVENTS_API_URL = (process.env.EVENTS_API_URL || "https://api.getjoiner.com").replace(/\/$/, "");
-const rawApiKey = process.env.EVENTS_API_KEY;
+const rawApiKey = process.env.EVENTS_API_KEY || "";
 if (!rawApiKey) {
-  console.error("FATAL: EVENTS_API_KEY environment variable is required");
-  process.exit(1);
+  console.error("WARNING: EVENTS_API_KEY environment variable is not defined. Proxy requests will likely fail.");
 }
 const AUTH_HEADER = rawApiKey.toLowerCase().startsWith('bearer ') ? rawApiKey : `Bearer ${rawApiKey}`;
 
