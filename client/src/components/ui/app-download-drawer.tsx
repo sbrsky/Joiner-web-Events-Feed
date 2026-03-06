@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { X, Copy, Check } from "lucide-react";
 import { useState, useEffect } from "react";
-import { eventDetails } from "@/api/eventDetailsClient";
+import { generateEventDeepLink } from "@/lib/branch";
 import { QRCodeSVG } from "qrcode.react";
 
 export type DrawerType = "like" | "people" | "join" | "social" | "share" | null;
@@ -10,10 +10,10 @@ interface AppDownloadDrawerProps {
     isOpen: boolean;
     onClose: () => void;
     type: DrawerType;
-    eventId?: string | number;
+    event?: any;
 }
 
-export function AppDownloadDrawer({ isOpen, onClose, type, eventId }: AppDownloadDrawerProps) {
+export function AppDownloadDrawer({ isOpen, onClose, type, event }: AppDownloadDrawerProps) {
     const [copied, setCopied] = useState(false);
     const [deepLink, setDeepLink] = useState<string | null>(null);
 
@@ -24,12 +24,14 @@ export function AppDownloadDrawer({ isOpen, onClose, type, eventId }: AppDownloa
             return;
         }
 
-        if (eventId) {
-            eventDetails.getDeepLink(eventId)
-                .then(link => setDeepLink(link))
-                .catch(err => console.error("Failed to fetch deep link", err));
+        if (event) {
+            generateEventDeepLink(event)
+                .then(link => {
+                    if (link) setDeepLink(link);
+                })
+                .catch(err => console.error("Failed to generate branch deep link", err));
         }
-    }, [isOpen, eventId]);
+    }, [isOpen, event]);
 
     const displayLink = deepLink || "https://getjoiner.com/download";
 
@@ -78,7 +80,7 @@ export function AppDownloadDrawer({ isOpen, onClose, type, eventId }: AppDownloa
                 className="absolute inset-0 bg-black/30 backdrop-blur-[2px] cursor-pointer"
                 onClick={onClose}
             />
-            <div className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col items-center justify-center p-10 animate-in slide-in-from-right duration-300">
+            <div className="relative w-[75%] sm:w-full max-w-md h-full bg-white shadow-2xl flex flex-col items-center justify-center p-6 sm:p-10 animate-in slide-in-from-right duration-300 overflow-y-auto">
                 <Button
                     variant="ghost"
                     size="icon"
@@ -118,7 +120,7 @@ export function AppDownloadDrawer({ isOpen, onClose, type, eventId }: AppDownloa
                     </div>
                 )}
 
-                <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100 shadow-inner flex flex-col items-center mb-8 relative">
+                <div className="hidden md:flex bg-gray-50 p-6 rounded-[2rem] border border-gray-100 shadow-inner flex-col items-center mb-8 relative">
                     <QRCodeSVG
                         value={displayLink}
                         size={160}
@@ -128,6 +130,14 @@ export function AppDownloadDrawer({ isOpen, onClose, type, eventId }: AppDownloa
                         level="Q"
                     />
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-6">Scan Code to Download</p>
+                </div>
+
+                <div className="md:hidden w-full flex flex-col items-center mb-8">
+                    <a href={displayLink} className="w-full">
+                        <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white rounded-full font-bold text-lg h-14 shadow-lg shadow-orange-600/20">
+                            Open in Joiner
+                        </Button>
+                    </a>
                 </div>
 
                 {!isJoin ? (
