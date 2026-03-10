@@ -142,6 +142,8 @@ export default function EventsWebview() {
   const availableLanguages = Array.from(new Set([
     ...topPicks.flatMap((e) => e.languages || []),
     ...upcomingEvents.flatMap((e) => e.languages || []),
+    ...selectedLanguages,
+    'en', 'pt', 'ru', 'es'
   ])).filter(Boolean).sort();
 
   const availableCategoryNames = new Set([

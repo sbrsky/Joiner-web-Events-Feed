@@ -10,14 +10,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { GatherEventLayout } from "./GatherEventLayout";
 import { decodeEventId } from "@/lib/idUtils";
 
+import { useLanguages } from "@/hooks/useLanguages";
+
 export default function EventPage() {
     const { user, loading: authLoading } = useAuth();
     const isAuth = !!user;
+    const { selectedLanguages, toggleLanguage } = useLanguages();
 
     const [, params] = useRoute("/event/:id");
     const rawId = params?.id;
     const id = rawId ? decodeEventId(rawId) : undefined;
 
+    // ... rest of the component state/queries remain same ...
     const { data: event, isLoading: eventLoading, error } = useQuery({
         queryKey: ["event", id, isAuth],
         queryFn: () => id ? eventDetails.getEventDetails(id, isAuth) : Promise.reject("No ID"),
@@ -40,7 +44,6 @@ export default function EventPage() {
             await refetchParticipationStatus();
         } catch (e) {
             console.error("Failed to join event", e);
-            // TODO: toast error or show message
         } finally {
             setIsJoining(false);
         }
@@ -85,17 +88,23 @@ export default function EventPage() {
     const month = startAt ? startAt.toLocaleString('en-US', { month: 'short' }).toUpperCase() : 'TBD';
     const day = startAt ? startAt.getDate() : '--';
 
-    // Participants
     const participants = Array.isArray(event.raw?.participants) ? event.raw.participants : [];
-
-    // Prices
     const prices = Array.isArray(event.raw?.prices) ? (event.raw.prices as any[]) : [];
     const minPrice = prices.length > 0 ? Math.min(...prices.map(p => p.price)) : 0;
     const currency = (event.raw?.currency as string) || "EUR";
 
+    // Build available languages list for the switcher
+    const eventLangs = Array.isArray(event.raw?.languages) ? event.raw.languages : [];
+    const availableLanguages = Array.from(new Set([
+        ...eventLangs,
+        ...selectedLanguages,
+        'en', 'pt', 'ru', 'es'
+    ])).sort();
+
     const commonProps = {
         event, month, day, timeString, endTimeString, participants, minPrice, currency,
-        participationStatus, handleJoin, isJoining, isAuth
+        participationStatus, handleJoin, isJoining, isAuth,
+        selectedLanguages, availableLanguages, toggleLanguage
     };
 
     return (

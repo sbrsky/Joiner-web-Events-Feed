@@ -81,17 +81,32 @@ export function GatherHomeLayout({
                         </span>
                     </div>
                     <div className="flex items-center gap-3">
-                        {user ? (
-                            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-orange-50 border border-orange-100 text-orange-600 text-xs font-semibold">
-                                <Sparkles className="w-3.5 h-3.5" />
-                                Personalised
-                            </div>
-                        ) : (
-                            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 border border-gray-200 text-gray-600 text-xs font-semibold">
-                                <Globe className="w-3.5 h-3.5" />
-                                Public
-                            </div>
-                        )}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all hover:opacity-80 cursor-pointer ${user ? "bg-orange-50 border border-orange-100 text-orange-600" : "bg-gray-100 border border-gray-200 text-gray-600"}`}>
+                                    {user ? <Sparkles className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+                                    {user ? "Personalised" : "Public"}
+                                    {(() => {
+                                        const count = selectedLanguages.filter((l: string) => availableLanguages.includes(l)).length;
+                                        return count > 0 ? ` (${count})` : "";
+                                    })()}
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-48 mt-1 z-[100]" align="end">
+                                <DropdownMenuLabel>Filter by Language</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {availableLanguages.map((lang: string) => (
+                                    <DropdownMenuCheckboxItem
+                                        key={lang}
+                                        checked={selectedLanguages.includes(lang)}
+                                        onCheckedChange={() => toggleLanguage(lang)}
+                                        className="uppercase"
+                                    >
+                                        {lang}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         {user ? (
                             <div className="flex items-center gap-2 border border-gray-200 rounded-full pr-4 pl-1 py-1 hover:bg-gray-50 transition-colors cursor-pointer" onClick={logout}>
                                 <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
