@@ -1,6 +1,36 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import fs from "fs";
+import path from "path";
+
+// --- Analytics Config Store ---
+const CONFIG_PATH = path.resolve(process.cwd(), "analytics-config.json");
+
+interface AnalyticsConfig {
+  gtm_id?: string;
+  meta_pixel_id?: string;
+  ga_measurement_id?: string;
+  clarity_id?: string;
+  hotjar_id?: string;
+  hotjar_sv?: string;
+  mixpanel_token?: string;
+}
+
+let analyticsConfig: AnalyticsConfig = {};
+
+try {
+  if (fs.existsSync(CONFIG_PATH)) {
+    analyticsConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf-8"));
+    console.log("[Admin] Loaded analytics config from disk.");
+  }
+} catch (e) {
+  console.warn("[Admin] Could not load analytics config:", e);
+}
+
+export function getAnalyticsConfig(): AnalyticsConfig {
+  return analyticsConfig;
+}
 
 const EVENTS_API_URL = (process.env.EVENTS_API_URL || "https://api.getjoiner.com").replace(/\/$/, "");
 const rawApiKey = process.env.EVENTS_API_KEY || "";
@@ -13,6 +43,22 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Admin: get analytics config
+  app.get("/api/admin/analytics-config", (_req, res) => {
+    res.json(analyticsConfig);
+  });
+
+  // Admin: save analytics config
+  app.post("/api/admin/analytics-config", (req, res) => {
+    const incoming = req.body as AnalyticsConfig;
+    analyticsConfig = { ...analyticsConfig, ...incoming };
+    try {
+      fs.writeFileSync(CONFIG_PATH, JSON.stringify(analyticsConfig, null, 2), "utf-8");
+    } catch (e) {
+      console.warn("[Admin] Could not persist analytics config to disk:", e);
+    }
+    res.json({ ok: true });
+  });
   // Enforce CORS to ensure only our frontend can reach the proxy API
   app.use("/api", (req, res, next) => {
     const origin = req.headers.origin;
