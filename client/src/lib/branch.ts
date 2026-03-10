@@ -50,16 +50,20 @@ export const generateEventDeepLink = async (event: any): Promise<string | null> 
 
         branch.link(
             {
-                channel: 'app',
+                channel: 'webview',
                 feature: 'event_sharing',
-                campaign: 'event_share',
-                tags: ['event', 'joiner'],
+                campaign: `event_${event?.id?.toString() || 'share'}`,
+                tags: ['event', 'joiner', 'webview'],
                 data: {
                     $canonical_identifier: 'event',
                     $og_title: name,
                     $og_description: contentDescription,
                     $og_image_url: event?.image || event?.photo || '',
                     eventId: event?.id?.toString(),
+                    utm_source: 'webview',
+                    utm_medium: 'event_sharing',
+                    utm_campaign: `share_event_${event?.id?.toString() || 'id'}`,
+                    utm_content: `event_${event?.id?.toString() || 'unknown'}`,
                 },
             },
             (err: any, link: any) => {
