@@ -64,6 +64,7 @@ export const generateEventDeepLink = async (event: any): Promise<string | null> 
                     utm_medium: 'event_sharing',
                     utm_campaign: `share_event_${event?.id?.toString() || 'id'}`,
                     utm_content: `event_${event?.id?.toString() || 'unknown'}`,
+                    $ios_nativelink: true,
                 },
             },
             (err: any, link: any) => {
