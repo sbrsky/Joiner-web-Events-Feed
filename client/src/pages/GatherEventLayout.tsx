@@ -124,7 +124,10 @@ export function GatherEventLayout({
                         </Link>
                         <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
                             <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-sm">J</div>
-                            Joiner.
+                            <span>Joiner.</span>
+                            <span className="ml-1 text-xs font-medium text-orange-600 tracking-normal" style={{ fontFamily: "'Architects Daughter', cursive" }}>
+                                now in LISBON! 🇵🇹
+                            </span>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
