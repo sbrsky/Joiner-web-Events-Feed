@@ -142,7 +142,7 @@ export function GatherEventLayout({
                                 Public
                             </div>
                         )}
-                        {/* {user ? (
+                        {user ? (
                             <div className="flex items-center gap-2 border border-gray-200 rounded-full pr-4 pl-1 py-1 hover:bg-gray-50 transition-colors cursor-pointer" onClick={logout}>
                                 <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
                                     <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt={user.displayName || "User"} className="w-full h-full object-cover" />
@@ -153,7 +153,7 @@ export function GatherEventLayout({
                             <Button variant="default" className="rounded-full bg-gray-900 border border-gray-900 text-white hover:bg-gray-800" onClick={loginWithGoogle}>
                                 Login
                             </Button>
-                        )} */}
+                        )}
                     </div>
                 </div>
             </header>
