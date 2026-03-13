@@ -3,11 +3,11 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
     Calendar, MapPin, Share2, Heart,
-    ChevronLeft, Instagram, ArrowRight, Moon, X, Sparkles, Globe
+    ChevronLeft, Instagram, ArrowRight, Moon, X, Sparkles, Globe, Info
 } from "lucide-react";
 import { AppDownloadDrawer, type DrawerType } from "@/components/ui/app-download-drawer";
 import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
+import { cn, getBroadLocation } from "@/lib/utils";
 
 import {
     DropdownMenu,
@@ -17,22 +17,13 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { ParticipantsDrawer } from "@/components/ui/participants-drawer";
 
-const getBroadLocation = (fullLoc: string) => {
-    if (!fullLoc || fullLoc === "TBA") return "Lisbon, Portugal";
-    const parts = fullLoc.split(',');
-    if (parts.length > 2) {
-        // Take up to 3 segments from the end (District, City, Country)
-        return parts.slice(-3).join(',').trim();
-    } else if (parts.length > 1) {
-        return parts.slice(-2).join(',').trim();
-    }
-    return fullLoc;
-};
+// using getBroadLocation from lib/utils
 
 function RegistrationCard({
     event, isFree, minPrice, currency, timeString, endTimeString,
-    isAuth, participationStatus, handleJoin, isJoining, setDrawerType
+    isAuth, participationStatus, handleJoin, isJoining, setDrawerType, isLoginEnabled
 }: any) {
     const isApproved = participationStatus?.status === "approved";
 
@@ -75,40 +66,59 @@ function RegistrationCard({
                     </div>
                 </div>
 
-                <Button
-                    className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-black font-bold text-base transition-colors group disabled:bg-gray-400 disabled:opacity-100"
-                    onClick={() => {
-                        if (!isAuth) {
-                            setDrawerType("join");
-                        } else if (!participationStatus) {
-                            handleJoin();
-                        }
-                    }}
-                    disabled={isJoining || !!participationStatus}
-                >
-                    {!isAuth ? (
-                        <>Request to Join <ArrowRight className="w-4 h-4 ml-2 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" /></>
-                    ) : (
-                        isJoining ? "Joining..." :
-                            !participationStatus ? "Join Event" :
-                                participationStatus.status === "pending" ? "Request Pending" :
-                                    participationStatus.status === "approved" ? "Joined" :
-                                        participationStatus.status === "invited" ? "Invited" :
-                                            participationStatus.status === "canceled" ? "Canceled" :
-                                                participationStatus.status === "rejected" ? "Rejected" :
-                                                    "Joined"
-                    )}
-                </Button>
+                {!isLoginEnabled ? (
+                    <div className="bg-gray-100 text-gray-400 font-bold p-3 text-center rounded-xl text-sm border border-gray-100">
+                        Login is currently disabled
+                    </div>
+                ) : (
+                    <Button
+                        className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-black font-bold text-base transition-colors group disabled:bg-gray-400 disabled:opacity-100"
+                        onClick={() => {
+                            if (!isAuth) {
+                                setDrawerType("join");
+                            } else if (!participationStatus) {
+                                handleJoin();
+                            }
+                        }}
+                        disabled={isJoining || !!participationStatus}
+                    >
+                        {!isAuth ? (
+                            <>Request to Join <ArrowRight className="w-4 h-4 ml-2 opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all" /></>
+                        ) : (
+                            isJoining ? "Joining..." :
+                                !participationStatus ? "Join Event" :
+                                    participationStatus.status === "pending" ? "Request Pending" :
+                                        participationStatus.status === "approved" ? "Joined" :
+                                            participationStatus.status === "invited" ? "Invited" :
+                                                participationStatus.status === "canceled" ? "Canceled" :
+                                                    participationStatus.status === "rejected" ? "Rejected" :
+                                                        "Joined"
+                        )}
+                    </Button>
+                )}
             </div>
         </div>
     );
 }
 
+import { COUNTRIES } from "@/lib/countries";
+
 export function GatherEventLayout({
-    event, month, day, timeString, endTimeString, participants, minPrice, currency,
+    event, month, day, timeString, endTimeString, participants: allParticipants = [], minPrice, currency,
     participationStatus, handleJoin, isJoining, isAuth,
-    selectedLanguages = [], availableLanguages = [], toggleLanguage = () => { }
+    selectedLanguages = [], availableLanguages = [], toggleLanguage = () => { },
+    selectedCountry = null, toggleCountry = () => { },
+    countries = [], allCountriesCount = 0,
+    isLoginEnabled = true
 }: any) {
+    const participants = allParticipants
+        .filter((p: any) => p.status === "approved")
+        .map((p: any) => ({
+            ...p,
+            id: p.client_id || p.id,
+            photo: p.photo || p.avatar || p.image,
+            name: p.name || "Participant"
+        }));
     const [drawerType, setDrawerType] = useState<DrawerType>(null);
     const [isHostAboutOpen, setIsHostAboutOpen] = useState(false);
     const { user, loginWithGoogle, logout } = useAuth();
@@ -135,12 +145,42 @@ export function GatherEventLayout({
                         <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
                             <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-sm">J</div>
                             <span>Joiner.</span>
-                            <span className="ml-1 text-xs font-medium text-orange-600 tracking-normal" style={{ fontFamily: "'Architects Daughter', cursive" }}>
-                                now in LISBON! 🇵🇹
-                            </span>
+                            {(() => {
+                                const current = countries.find((c: any) => c.id === selectedCountry);
+                                if (!current) return null;
+                                return (
+                                    <span className="ml-1 text-xs font-medium text-orange-600 tracking-normal" style={{ fontFamily: "'Architects Daughter', cursive" }}>
+                                        now in {current.capitalName}! {current.flag}
+                                    </span>
+                                );
+                            })()}
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        {/* Country Switcher */}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 border border-gray-200 text-gray-600 text-xs font-semibold transition-all hover:opacity-80 cursor-pointer">
+                                    <MapPin className="w-3.5 h-3.5" />
+                                    {selectedCountry ? countries.find((c: any) => c.id === selectedCountry)?.name : "Countries"}
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-48 mt-1 z-[100]" align="end">
+                                <DropdownMenuLabel>Event Location</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {countries.map((country: any) => (
+                                    <DropdownMenuCheckboxItem
+                                        key={country.id}
+                                        checked={selectedCountry === country.id}
+                                        onCheckedChange={() => toggleCountry(country.id)}
+                                    >
+                                        <span className="mr-2">{country.flag}</span>
+                                        {country.name}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <button className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all hover:opacity-80 cursor-pointer ${user ? "bg-orange-50 border border-orange-100 text-orange-600" : "bg-gray-100 border border-gray-200 text-gray-600"}`}>
@@ -167,17 +207,19 @@ export function GatherEventLayout({
                                 ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        {user ? (
-                            <div className="flex items-center gap-2 border border-gray-200 rounded-full pr-4 pl-1 py-1 hover:bg-gray-50 transition-colors cursor-pointer" onClick={logout}>
-                                <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
-                                    <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt={user.displayName || "User"} className="w-full h-full object-cover" />
+                        {isLoginEnabled && (
+                            user ? (
+                                <div className="flex items-center gap-2 border border-gray-200 rounded-full pr-4 pl-1 py-1 hover:bg-gray-50 transition-colors cursor-pointer" onClick={logout}>
+                                    <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200">
+                                        <img src={user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.displayName}`} alt={user.displayName || "User"} className="w-full h-full object-cover" />
+                                    </div>
+                                    <span className="text-sm font-semibold text-gray-700">{user.displayName?.split(" ")[0]}</span>
                                 </div>
-                                <span className="text-sm font-semibold text-gray-700">{user.displayName?.split(" ")[0]}</span>
-                            </div>
-                        ) : (
-                            <Button variant="default" className="rounded-full bg-gray-900 border border-gray-900 text-white hover:bg-gray-800" onClick={loginWithGoogle}>
-                                Login
-                            </Button>
+                            ) : (
+                                <Button variant="default" className="rounded-full bg-gray-900 border border-gray-900 text-white hover:bg-gray-800" onClick={loginWithGoogle}>
+                                    Login
+                                </Button>
+                            )
                         )}
                     </div>
                 </div>
@@ -278,44 +320,43 @@ export function GatherEventLayout({
                             <div className="space-y-4">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1">Hosted By</h3>
 
-                                <div
-                                    className="flex items-center gap-4 px-1 cursor-pointer group/host"
-                                    onClick={() => setIsHostAboutOpen(!isHostAboutOpen)}
-                                >
-                                    <div className="h-12 w-12 rounded-full overflow-hidden bg-orange-200 shrink-0 border border-gray-100 transition-transform group-hover/host:scale-105">
-                                        {event.host?.avatar ? (
-                                            <img src={event.host.avatar} className="w-full h-full object-cover" alt={event.host.name} />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-orange-800 font-bold">
-                                                {event.host?.name?.[0] || "?"}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-col flex-1 min-w-0">
-                                        <span className="text-base font-bold text-gray-900 truncate group-hover/host:text-orange-600 transition-colors">
-                                            {event.host?.name || "Unknown Host"}
-                                        </span>
-                                        <span className="text-sm text-gray-500">Event Organizer</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                                        {((event.raw?.owner as any)?.instagram?.username || true) && (
+                                <div className="flex items-center gap-4 px-1">
+                                    <Link href={`/client/${event.host?.id}`} className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer group/host">
+                                        <div className="h-12 w-12 rounded-full overflow-hidden bg-orange-200 shrink-0 border border-gray-100 transition-transform group-hover/host:scale-105">
+                                            {event.host?.avatar ? (
+                                                <img src={event.host.avatar} className="w-full h-full object-cover" alt={event.host.name} />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-orange-800 font-bold">
+                                                    {event.host?.name?.[0] || "?"}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col flex-1 min-w-0">
+                                            <span className="text-base font-bold text-gray-900 truncate group-hover/host:text-orange-600 transition-colors">
+                                                {event.host?.name || "Unknown Host"}
+                                            </span>
+                                            <span className="text-sm text-gray-500">Event Organizer</span>
+                                        </div>
+                                    </Link>
+                                    <div className="flex items-center gap-1.5">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-violet-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg"
+                                            onClick={() => setIsHostAboutOpen(!isHostAboutOpen)}
+                                        >
+                                            <Info className="w-4 h-4" />
+                                        </Button>
+                                        {isLoginEnabled && (
                                             <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+                                                variant="outline"
+                                                size="sm"
+                                                className="rounded-full h-8 text-xs font-semibold px-4 border-gray-200 text-gray-700 hover:bg-gray-50"
                                                 onClick={() => setDrawerType("social")}
                                             >
-                                                <Instagram className="w-4 h-4" />
+                                                Follow
                                             </Button>
                                         )}
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="rounded-full h-8 text-xs font-semibold px-4 border-gray-200 text-gray-700 hover:bg-gray-50"
-                                            onClick={() => setDrawerType("social")}
-                                        >
-                                            Follow
-                                        </Button>
                                     </div>
                                 </div>
 
@@ -341,6 +382,7 @@ export function GatherEventLayout({
                                     handleJoin={handleJoin}
                                     isJoining={isJoining}
                                     setDrawerType={setDrawerType}
+                                    isLoginEnabled={isLoginEnabled}
                                 />
                             </div>
 
@@ -473,7 +515,7 @@ export function GatherEventLayout({
 
             {/* Simple Footer */}
             <footer className="container max-w-6xl mx-auto px-6 mt-20 pt-8 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500 font-medium">
-                <div>Joiner. <span className="text-gray-400">© 2024</span></div>
+                <div>Joiner. <span className="text-gray-400">© 2026</span></div>
                 <div className="flex gap-6">
                     <a href="#" className="hover:text-gray-900">Terms</a>
                     <a href="#" className="hover:text-gray-900">Privacy</a>
@@ -481,13 +523,20 @@ export function GatherEventLayout({
                 </div>
             </footer>
 
-            {/* App Download Drawer */}
-            <AppDownloadDrawer
-                isOpen={!!drawerType}
-                type={drawerType}
-                onClose={() => setDrawerType(null)}
-                event={event.raw || event}
-            />
+            {isAuth && drawerType === "people" ? (
+                <ParticipantsDrawer
+                    isOpen={drawerType === "people"}
+                    onClose={() => setDrawerType(null)}
+                    participants={participants}
+                />
+            ) : (
+                <AppDownloadDrawer
+                    isOpen={!!drawerType}
+                    type={drawerType}
+                    onClose={() => setDrawerType(null)}
+                    event={event.raw || event}
+                />
+            )}
         </div>
     );
 }

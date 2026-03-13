@@ -11,11 +11,24 @@ import { GatherEventLayout } from "./GatherEventLayout";
 import { decodeEventId } from "@/lib/idUtils";
 
 import { useLanguages } from "@/hooks/useLanguages";
+import { useCountries } from "@/hooks/useCountries";
+import { COUNTRIES } from "@/lib/countries";
 
 export default function EventPage() {
     const { user, loading: authLoading } = useAuth();
     const isAuth = !!user;
     const { selectedLanguages, toggleLanguage } = useLanguages();
+
+    // We need config to pass allowed_countries to useCountries if we wanted,
+    // but we can just let it grab from local storage or wait.
+    // Actually useQuery will fire at the same time.
+    const { data: config } = useQuery({
+        queryKey: ["admin-config"],
+        queryFn: () => fetch("/api/admin/analytics-config").then(r => r.json()),
+    });
+    const allowedCountriesIds = config?.allowed_countries || ["PT", "LT", "LV"];
+
+    const { selectedCountry, toggleCountry } = useCountries(allowedCountriesIds);
 
     const [, params] = useRoute("/event/:id");
     const rawId = params?.id;
@@ -101,10 +114,17 @@ export default function EventPage() {
         'en', 'pt', 'ru', 'es'
     ])).sort();
 
+    // Only show countries enabled in admin
+    const filteredCountries = COUNTRIES.filter(c => allowedCountriesIds.includes(c.id));
+
     const commonProps = {
         event, month, day, timeString, endTimeString, participants, minPrice, currency,
         participationStatus, handleJoin, isJoining, isAuth,
-        selectedLanguages, availableLanguages, toggleLanguage
+        selectedLanguages, availableLanguages, toggleLanguage,
+        selectedCountry, toggleCountry,
+        countries: filteredCountries,
+        allCountriesCount: COUNTRIES.length,
+        isLoginEnabled: config?.is_login_enabled !== false
     };
 
     return (

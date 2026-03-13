@@ -47,17 +47,49 @@ export function mapApiEventToFeedEvent(raw: RawApiEvent, index: number): FeedEve
   const id = raw.id != null ? String(raw.id) : `event-${index}`;
   const title = raw.name ?? raw.title ?? "Untitled Event";
   const image = getEventImage(raw);
-  const category = (typeof raw.category === 'string' && raw.category.trim() !== '' && raw.category !== 'Event') ? raw.category : getCategoryName(raw.category_id);
+  let category = "Event";
+  if (typeof raw.category === 'string' && raw.category.trim() !== '' && raw.category !== 'Event') {
+    category = raw.category;
+  } else if (raw.category && typeof raw.category === 'object') {
+    category = (raw.category as any).name || (raw.category as any).title || getCategoryName(raw.category_id);
+  } else {
+    category = getCategoryName(raw.category_id ?? (raw as any).categoryId);
+  }
   const date = formatDate(raw.start_at ?? raw.date);
-  const location = raw.place ?? raw.place_id ?? "TBA";
+  let location = "TBA";
+  const rawLoc = raw.location;
+  if (rawLoc) {
+    if (typeof rawLoc === "object") {
+      const loc = rawLoc as any;
+      const candidates = [
+        loc.district, loc.street, loc.neighborhood, loc.locality,
+        loc.sub_locality, loc.address, loc.formatted_address,
+        loc.name, loc.city, loc.place
+      ];
+      location = candidates.find(c => c && typeof c === "string" && c !== "TBA") || "TBA";
+    } else if (typeof rawLoc === "string" && rawLoc.trim() !== "" && rawLoc !== "TBA") {
+      location = rawLoc;
+    }
+  }
+
+  if (location === "TBA" || !location) {
+    const candidates = [raw.place, raw.address, raw.city, raw.location_name, raw.place_id];
+    location = candidates.find(c => c && typeof c === "string" && c !== "TBA") || "TBA";
+  }
+
+  if (location === "TBA" && raw.venue) {
+    const venue = raw.venue as any;
+    location = typeof venue === "string" ? venue : venue.name || venue.address || "TBA";
+  }
   const attendees = raw.taken_capacity ?? raw.max_clients ?? 0;
   const spotsLeft = raw.remaining_capacity ?? 0;
   const tags = Array.isArray(raw.tags) ? raw.tags : [];
   const description = raw.description ?? undefined;
   const owner = raw.owner;
   const host =
-    owner && (owner.name != null || owner.photo != null)
+    owner && (owner.id != null || owner.name != null || owner.photo != null)
       ? {
+        id: owner.id != null ? String(owner.id) : undefined,
         name: owner.name ?? "Host",
         avatar: owner.photo ?? "",
       }
@@ -65,9 +97,21 @@ export function mapApiEventToFeedEvent(raw: RawApiEvent, index: number): FeedEve
 
   const mappedParticipants = Array.isArray(raw.participants)
     ? raw.participants
-      .map((p) => ({ avatar: p?.photo ?? p?.avatar ?? p?.image ?? "" }))
-      .filter((p) => p.avatar !== "")
+      .map((p) => ({
+        id: p?.client_id != null ? String(p.client_id) : undefined,
+        name: p?.name ?? "Participant",
+        avatar: p?.photo ?? p?.avatar ?? p?.image ?? "",
+        photo: p?.photo ?? p?.avatar ?? p?.image ?? "",
+        isFollowing: p?.is_following === true || p?.is_following === 1,
+        status: p?.status
+      }))
+      .filter((p) => p.id !== undefined)
     : undefined;
+
+  // participantCount: use the actual participants array length, or fall back to taken_capacity
+  const participantCount = Array.isArray(raw.participants) && raw.participants.length > 0
+    ? raw.participants.length
+    : Number(attendees);
 
   return {
     id,
@@ -84,6 +128,9 @@ export function mapApiEventToFeedEvent(raw: RawApiEvent, index: number): FeedEve
     ...(host && { host }),
     ...(mappedParticipants && mappedParticipants.length > 0 && { participants: mappedParticipants }),
     languages: Array.isArray(raw.languages) ? raw.languages : [],
+    ...(raw.distance != null && { distance: Number(raw.distance) }),
+    isPromoted: raw.is_promoted === true,
+    participantCount,
   };
 }
 

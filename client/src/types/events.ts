@@ -12,9 +12,13 @@ export interface FeedEvent {
   tags: string[];
   description?: string;
   host?: { name: string; avatar: string };
-  participants?: { avatar: string }[];
+  participants?: { avatar: string; isFollowing?: boolean }[];
   languages?: string[];
   apiGroup?: string;
+  distance?: number;
+  isPromoted?: boolean;
+  participantCount?: number;
+  isFriendsGoing?: boolean;
 }
 
 /** Owner from backend */
@@ -60,6 +64,7 @@ export interface RawApiEvent {
   instructions?: string | null;
   currency?: string;
   covid_pass?: boolean;
+  distance?: number;
   [key: string]: any;
 }
 

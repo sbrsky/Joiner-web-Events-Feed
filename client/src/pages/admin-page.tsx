@@ -2,10 +2,21 @@ import { useState, useEffect } from "react";
 import {
     BarChart3, Settings, Eye, Users, TrendingUp, Activity,
     Save, CheckCircle, ExternalLink, Tag, Globe, Shield,
-    Zap, MousePointer, AlertCircle, ChevronRight, X, Home
+    Zap, MousePointer, AlertCircle, ChevronRight, X, Home, MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { Switch } from "@/components/ui/switch";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AnalyticsConfig {
     gtm_id: string;
@@ -15,6 +26,8 @@ interface AnalyticsConfig {
     hotjar_id: string;
     hotjar_sv: string;
     mixpanel_token: string;
+    allowed_countries: string[];
+    is_login_enabled: boolean;
 }
 
 const TOOL_DOCS: Record<string, string> = {
@@ -126,7 +139,10 @@ export default function AdminPage() {
         hotjar_id: "",
         hotjar_sv: "",
         mixpanel_token: "",
+        allowed_countries: ["PT", "LT", "LV"], // Default all 3 for now
+        is_login_enabled: true,
     });
+    const [showDisableLoginAlert, setShowDisableLoginAlert] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [loadError, setLoadError] = useState(false);
@@ -141,7 +157,13 @@ export default function AdminPage() {
         fetch("/api/admin/analytics-config")
             .then((r) => r.json())
             .then((data) => {
-                if (data && typeof data === "object") setConfig((prev) => ({ ...prev, ...data }));
+                if (data && typeof data === "object") {
+                    setConfig((prev) => ({ 
+                        ...prev, 
+                        ...data,
+                        is_login_enabled: data.is_login_enabled !== false // Default to true if missing
+                    }));
+                }
             })
             .catch(() => setLoadError(true));
     }, [authenticated]);
@@ -258,7 +280,7 @@ export default function AdminPage() {
                     <div className="space-y-10">
                         <div>
                             <h1 className="text-3xl font-black text-gray-900">Dashboard</h1>
-                            <p className="text-gray-500 mt-1">Overview of your Joiner Lisbon feed.</p>
+                            <p className="text-gray-500 mt-1">Overview of your Joiner event feed.</p>
                         </div>
 
                         {/* Stats Grid */}
@@ -437,6 +459,113 @@ export default function AdminPage() {
                                 badgeColor="bg-green-100 text-green-700"
                             />
                         </div>
+
+                        {/* Feed Countries Configuration */}
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mt-8">
+                            <div className="p-6">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="shrink-0 w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center border border-orange-100">
+                                        <MapPin className="w-5 h-5 text-orange-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">Event Feed Countries</h3>
+                                        <p className="text-sm text-gray-500">Enable or disable event visibility for specific countries in the app header.</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {[
+                                        { id: "PT", name: "Portugal", flag: "🇵🇹" },
+                                        { id: "LT", name: "Lithuania", flag: "🇱🇹" },
+                                        { id: "LV", name: "Latvia", flag: "🇱🇻" },
+                                    ].map((country) => {
+                                        const isEnabled = config.allowed_countries?.includes(country.id);
+                                        return (
+                                            <button
+                                                key={country.id}
+                                                onClick={() => {
+                                                    const current = config.allowed_countries || [];
+                                                    const next = current.includes(country.id)
+                                                        ? current.filter(id => id !== country.id)
+                                                        : [...current, country.id];
+                                                    setConfig(prev => ({ ...prev, allowed_countries: next }));
+                                                    setSaved(false);
+                                                }}
+                                                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isEnabled ? "border-orange-200 bg-orange-50/50" : "border-gray-100 bg-gray-50 hover:bg-gray-100"}`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-2xl">{country.flag}</span>
+                                                    <span className="font-semibold text-sm text-gray-700">{country.name}</span>
+                                                </div>
+                                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${isEnabled ? "bg-orange-600 border-orange-600" : "bg-white border-gray-300"}`}>
+                                                    {isEnabled && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* App Features Configuration */}
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mt-8">
+                            <div className="p-6">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="shrink-0 w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100">
+                                        <Shield className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">App Features</h3>
+                                        <p className="text-sm text-gray-500">Toggle global app functionality.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center border border-gray-200">
+                                            <Users className="w-5 h-5 text-gray-600" />
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-gray-900">User Login & Profile</div>
+                                            <div className="text-xs text-gray-500">Enable authentication and personal social features.</div>
+                                        </div>
+                                    </div>
+                                    <Switch
+                                        checked={config.is_login_enabled}
+                                        onCheckedChange={(checked) => {
+                                            if (!checked) {
+                                                setShowDisableLoginAlert(true);
+                                            } else {
+                                                setConfig((prev) => ({ ...prev, is_login_enabled: true }));
+                                                setSaved(false);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <AlertDialog open={showDisableLoginAlert} onOpenChange={setShowDisableLoginAlert}>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Disable Login Functionality?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will hide all login buttons and disable personal features like profiles, joining events, and following other users. The site will operate in "Public Only" mode.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={() => {
+                                            setConfig((prev) => ({ ...prev, is_login_enabled: false }));
+                                            setSaved(false);
+                                            setShowDisableLoginAlert(false);
+                                        }}
+                                        className="bg-red-600 hover:bg-red-700 text-white"
+                                    >
+                                        Yes, Disable Login
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
 
                         {/* How it works */}
                         <div className="bg-gray-900 rounded-2xl p-6 text-white">

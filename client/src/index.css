@@ -78,3 +78,13 @@
 .glass-card {
   @apply bg-card/50 backdrop-blur-md border border-white/5;
 }
+
+/* Friends Going – floating avatar animation */
+@keyframes float-avatar {
+  0% {
+    transform: translateY(0px);
+  }
+  100% {
+    transform: translateY(-8px);
+  }
+}

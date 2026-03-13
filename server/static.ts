@@ -71,6 +71,9 @@ export function serveStatic(app: Express) {
 
       html = html.replace("</head>", `${envScript}${analyticsScript}</head>`);
 
+      const { injectMetaTags } = await import("./seo");
+      html = await injectMetaTags(html, req);
+
       res.setHeader("Content-Type", "text/html");
       res.send(html);
     } catch (e) {

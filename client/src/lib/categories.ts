@@ -16,3 +16,8 @@ export const getCategoryName = (id?: number | string | null): string => {
     if (id == null) return "Event";
     return EVENT_CATEGORIES[id] || `Category ${id}`;
 };
+
+export const getCategoryIdByName = (name: string): number | null => {
+    const entry = Object.entries(EVENT_CATEGORIES).find(([_, catName]) => catName === name);
+    return entry ? Number(entry[0]) : null;
+};

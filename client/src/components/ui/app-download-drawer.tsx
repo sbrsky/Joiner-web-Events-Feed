@@ -3,6 +3,7 @@ import { X, Copy, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { generateEventDeepLink } from "@/lib/branch";
 import { QRCodeSVG } from "qrcode.react";
+import { getStoredUTMs } from "@/lib/utm";
 
 export type DrawerType = "like" | "people" | "join" | "social" | "share" | null;
 
@@ -33,7 +34,18 @@ export function AppDownloadDrawer({ isOpen, onClose, type, event }: AppDownloadD
         }
     }, [isOpen, event]);
 
-    const displayLink = deepLink || "https://getjoiner.com/download";
+    const getFallbackLink = () => {
+        const base = "https://getjoiner.com/download";
+        const utms = getStoredUTMs();
+        const params = new URLSearchParams();
+        Object.entries(utms).forEach(([key, val]) => {
+            if (val) params.set(key, val);
+        });
+        const qs = params.toString();
+        return qs ? `${base}?${qs}` : base;
+    };
+
+    const displayLink = deepLink || getFallbackLink();
 
     if (!isOpen || !type) return null;
 

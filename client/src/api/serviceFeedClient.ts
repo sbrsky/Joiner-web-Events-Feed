@@ -24,18 +24,35 @@ export class ServiceFeedClient {
         this.baseUrl = "/api/proxied";
     }
 
-    async getFeed(page: number = 1, forWebview: 0 | 1 = 0, isAuth: boolean = false): Promise<{ events: FeedEvent[]; meta: { current_page: number; last_page: number } }> {
-        const endpoint = isAuth ? `/api/feed` : `/api/service/feed`;
+    async getFeed(page: number = 1, forWebview: 0 | 1 = 0, isAuth: boolean = false, customLat?: number, customLng?: number, customDistance?: number, categories?: number[], languages?: string[], timezone?: string): Promise<{ events: FeedEvent[]; meta: { current_page: number; last_page: number } }> {
+        const endpoint = isAuth ? `/api/v2/feed/following` : `/api/service/feed`;
         const url = new URL(`${this.baseUrl}${endpoint}`, typeof window !== "undefined" ? window.location.origin : "http://localhost:5000");
         url.searchParams.append("page", page.toString());
+
+        const lat = customLat ?? DEFAULT_LOCATION.lat;
+        const lng = customLng ?? DEFAULT_LOCATION.lng;
+        const dist = customDistance ?? DEFAULT_DISTANCE_KM;
+
         if (isAuth) {
-            url.searchParams.append("lat", DEFAULT_LOCATION.lat.toString());
-            url.searchParams.append("lng", DEFAULT_LOCATION.lng.toString());
+            url.searchParams.append("lat", lat.toString());
+            url.searchParams.append("lng", lng.toString());
+            url.searchParams.append("distance", dist.toString());
+            url.searchParams.append("page_size", "10");
+
+            if (categories && categories.length > 0) {
+                categories.forEach(id => url.searchParams.append("category_id[]", id.toString()));
+            }
+            if (languages && languages.length > 0) {
+                languages.forEach(code => url.searchParams.append("language_code[]", code));
+            }
+            if (timezone) {
+                url.searchParams.append("timezone", timezone);
+            }
         } else {
             url.searchParams.append("for_webview", forWebview.toString());
-            url.searchParams.append("lat", DEFAULT_LOCATION.lat.toString());
-            url.searchParams.append("lng", DEFAULT_LOCATION.lng.toString());
-            url.searchParams.append("distance", DEFAULT_DISTANCE_KM.toString());
+            url.searchParams.append("lat", lat.toString());
+            url.searchParams.append("lng", lng.toString());
+            url.searchParams.append("distance", dist.toString());
         }
 
         const response = isAuth
@@ -95,23 +112,7 @@ export class ServiceFeedClient {
             rawEvents = [];
         }
 
-        const BASE_LAT = DEFAULT_LOCATION.lat;
-        const BASE_LNG = DEFAULT_LOCATION.lng;
-        const MAX_DISTANCE_KM = DEFAULT_DISTANCE_KM;
-
-        const validEvents = isAuth ? rawEvents : rawEvents.filter((raw: RawApiEvent) => {
-            const latRaw = raw.latitude ?? raw.lat ?? (raw.location as any)?.lat ?? (raw.location as any)?.latitude;
-            const lngRaw = raw.longitude ?? raw.lng ?? (raw.location as any)?.lng ?? (raw.location as any)?.longitude;
-
-            const lat = latRaw != null ? Number(latRaw) : null;
-            const lng = lngRaw != null ? Number(lngRaw) : null;
-
-            if (lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
-                const distance = getDistanceInKm(BASE_LAT, BASE_LNG, lat, lng);
-                return distance <= MAX_DISTANCE_KM;
-            }
-            return false;
-        });
+        const validEvents = rawEvents; // The distance filtering is handled by the backend
 
         const events = validEvents.map((raw: any, index: number) => {
             const mapped = mapApiEventToFeedEvent(raw, index);
@@ -130,14 +131,16 @@ export class ServiceFeedClient {
         };
     }
 
-    async getFeedByTimeline(tab: string, page: number = 1, pageSize: number = 10, lat?: number, lng?: number, distance?: number, timezone?: string): Promise<{ events: FeedEvent[]; meta: { current_page: number; last_page: number } }> {
+    async getFeedByTimeline(tab: string, page: number = 1, pageSize: number = 10, lat?: number, lng?: number, distance?: number, timezone?: string, isAuth: boolean = false): Promise<{ events: FeedEvent[]; meta: { current_page: number; last_page: number } }> {
         const baseUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost:5000";
 
-        const url = new URL(`${this.baseUrl}/api/service/feed`, baseUrl);
+        const endpoint = isAuth ? '/api/v2/feed' : '/api/service/feed';
+        const url = new URL(`${this.baseUrl}${endpoint}`, baseUrl);
         url.searchParams.append("tab", tab);
 
         // Always include page to support pagination correctly (1 by default)
         url.searchParams.append("page", page.toString());
+        url.searchParams.append("page_size", pageSize.toString());
 
         if (lat !== undefined && lng !== undefined) {
             url.searchParams.append("lat", lat.toString());
@@ -148,12 +151,18 @@ export class ServiceFeedClient {
             url.searchParams.append("distance", distance.toString());
         }
 
-        const response = await fetch(url.toString(), {
-            method: "GET",
-            headers: {
-                "Accept": "application/json",
-            },
-        });
+        if (timezone) {
+            url.searchParams.append("timezone", timezone);
+        }
+
+        const response = isAuth
+            ? await fetchWithAuth(url.toString(), { method: "GET" })
+            : await fetch(url.toString(), {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json",
+                },
+            });
 
         if (!response.ok) {
             throw new Error(`API Error: ${response.status} ${response.statusText}`);
@@ -186,6 +195,94 @@ export class ServiceFeedClient {
             events,
             meta,
         };
+    }
+    async getFriendsGoingFeed(page: number = 1, lat?: number, lng?: number, distance?: number, timezone?: string): Promise<{ events: FeedEvent[]; meta: { current_page: number; last_page: number } }> {
+        const baseUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost:5000";
+        const url = new URL(`${this.baseUrl}/api/v2/feed/friends-going`, baseUrl);
+        url.searchParams.append("page", page.toString());
+        url.searchParams.append("page_size", "10");
+
+        if (lat !== undefined && lng !== undefined) {
+            url.searchParams.append("lat", lat.toString());
+            url.searchParams.append("lng", lng.toString());
+        }
+        if (distance !== undefined) {
+            url.searchParams.append("distance", distance.toString());
+        }
+        if (timezone) {
+            url.searchParams.append("timezone", timezone);
+        }
+
+        const response = await fetchWithAuth(url.toString(), { method: "GET" });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const json: any = await response.json();
+
+        let rawEvents: RawApiEvent[] = [];
+        if (Array.isArray(json.data)) {
+            rawEvents = json.data;
+        } else if (json.data && Array.isArray(json.data.data)) {
+            rawEvents = json.data.data;
+        } else if (Array.isArray(json)) {
+            rawEvents = json;
+        }
+
+        const events = rawEvents.map((raw: any, index: number) => {
+            const mapped = mapApiEventToFeedEvent(raw, index);
+            mapped.isFriendsGoing = true;
+            return mapped;
+        });
+
+        const metaData = json.meta || {};
+        const meta = {
+            current_page: metaData.current_page || json.current_page || page,
+            last_page: metaData.last_page || json.last_page || (rawEvents.length < 10 ? page : page + 1),
+        };
+
+        return { events, meta };
+    }
+
+    async getClientUpcomingEvents(client: string | number): Promise<{ events: FeedEvent[] }> {
+        const url = `${this.baseUrl}/api/client/${client}/events/upcoming`;
+        const response = await fetchWithAuth(url, { method: "GET" });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const json: any = await response.json();
+        let rawEvents: RawApiEvent[] = [];
+        
+        if (Array.isArray(json.data)) {
+            rawEvents = json.data;
+        } else if (json.data && Array.isArray(json.data.events)) {
+            rawEvents = json.data.events;
+        } else if (Array.isArray(json.events)) {
+            rawEvents = json.events;
+        } else if (Array.isArray(json)) {
+            rawEvents = json;
+        }
+
+        const events = rawEvents.map((raw: any, index: number) => {
+            return mapApiEventToFeedEvent(raw, index);
+        });
+
+        return { events };
+    }
+
+    async getClientDetails(id: string | number): Promise<any> {
+        const url = `${this.baseUrl}/api/client/${id}`;
+        const response = await fetchWithAuth(url, { method: "GET" });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const json = await response.json();
+        return json.data || json;
     }
 }
 

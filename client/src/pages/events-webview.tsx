@@ -1,15 +1,18 @@
-import { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useState, useMemo, useEffect } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { serviceFeed } from "@/api/serviceFeedClient";
 import { GatherHomeLayout } from "./GatherHomeLayout";
-import { Button } from "@/components/ui/button";
-import { EVENT_CATEGORIES } from "@/lib/categories";
+import { EVENT_CATEGORIES, getCategoryIdByName } from "@/lib/categories";
 import { Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { DEFAULT_LOCATION, DEFAULT_DISTANCE_KM } from "@/lib/constants";
+import { DEFAULT_DISTANCE_KM } from "@/lib/constants";
+import { useLanguages } from "@/hooks/useLanguages";
+import { useCountries } from "@/hooks/useCountries";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { getEventCountry, getCountryCapital, getCountryRadius, COUNTRIES } from "@/lib/countries";
 
 const DYNAMIC_CATEGORIES = [
-  { name: "For You", icon: Sparkles },
+  { name: "Personalised", icon: Sparkles },
   ...Object.values(EVENT_CATEGORIES).map(name => ({ name, icon: null }))
 ];
 
@@ -17,47 +20,49 @@ export default function EventsWebview() {
   const { user } = useAuth();
   const isAuth = !!user;
 
-  const [activeCategory, setActiveCategory] = useState("For You");
-  // No more activeTimeline state, we fetch all sections at once
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("selectedLanguages");
-        return saved ? JSON.parse(saved) : ["en"];
-      } catch {
-        return ["en"];
-      }
-    }
-    return ["en"];
+  const { data: config } = useQuery({
+    queryKey: ["admin-config"],
+    queryFn: () => fetch("/api/admin/analytics-config").then(r => r.json()),
   });
 
-  const toggleLanguage = (lang: string) => {
-    setSelectedLanguages((prev) => {
-      const isRemoving = prev.includes(lang);
+  const allowedCountriesIds = useMemo(() => config?.allowed_countries || ["PT", "LT", "LV"], [config]);
 
-      if (isRemoving) {
-        const allAvailable = new Set([
-          ...topPicks.flatMap(e => e.languages || []),
-          ...upcomingEvents.flatMap(e => e.languages || [])
-        ]);
-        const selectedAvailableCount = prev.filter(l => allAvailable.has(l)).length;
-        if (selectedAvailableCount <= 1 && allAvailable.has(lang)) {
-          return prev;
-        }
-      }
+  const [activeCategory, setActiveCategory] = useState("Personalised");
+  const { selectedLanguages, toggleLanguage } = useLanguages();
+  const { selectedCountry, toggleCountry } = useCountries(allowedCountriesIds);
+  const { location: geoLoc } = useGeolocation();
 
-      const next = isRemoving ? prev.filter(l => l !== lang) : [...prev, lang];
-      if (typeof window !== "undefined") {
-        localStorage.setItem("selectedLanguages", JSON.stringify(next));
-      }
-      return next;
-    });
-  };
+  const [geoCity, setGeoCity] = useState("Your Location");
+
+  useEffect(() => {
+    if (geoLoc) {
+      fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${geoLoc.lat}&longitude=${geoLoc.lng}&localityLanguage=en`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.city) setGeoCity(data.city);
+        })
+        .catch(() => { });
+    }
+  }, [geoLoc]);
+
+  const filteredCountries = useMemo(() => COUNTRIES.filter(c => allowedCountriesIds.includes(c.id)), [allowedCountriesIds]);
+
+  const selectedCapital = getCountryCapital(selectedCountry);
+  const isGeoInSelectedCountry = geoLoc && getEventCountry(geoLoc.lat, geoLoc.lng) === selectedCountry;
+
+  const lat = isGeoInSelectedCountry ? geoLoc.lat : selectedCapital.lat;
+  const lng = isGeoInSelectedCountry ? geoLoc.lng : selectedCapital.lng;
+
+  const radius = getCountryRadius(selectedCountry);
 
   const featuredQuery = useInfiniteQuery({
-    queryKey: ["service-feed-featured", isAuth],
-    queryFn: ({ pageParam = 1 }) => serviceFeed.getFeed(pageParam, 1, isAuth),
-    getNextPageParam: (lastPage) => {
+    queryKey: ["service-feed-featured", isAuth, lat, lng, radius, activeCategory, selectedLanguages],
+    queryFn: ({ pageParam = 1 }) => {
+      const catId = activeCategory !== "Personalised" ? getCategoryIdByName(activeCategory) : undefined;
+      const categories = catId ? [catId] : [];
+      return serviceFeed.getFeed(pageParam, 1, isAuth, lat, lng, radius, categories, selectedLanguages, Intl.DateTimeFormat().resolvedOptions().timeZone);
+    },
+    getNextPageParam: (lastPage: any) => {
       return lastPage.meta.current_page < lastPage.meta.last_page
         ? lastPage.meta.current_page + 1
         : undefined;
@@ -66,12 +71,10 @@ export default function EventsWebview() {
   });
 
   const todayQuery = useInfiniteQuery({
-    queryKey: ["service-feed-today", isAuth],
+    queryKey: ["service-feed-today", isAuth, lat, lng, radius],
     queryFn: ({ pageParam = 1 }) =>
-      isAuth
-        ? serviceFeed.getFeed(pageParam, 0, isAuth)
-        : serviceFeed.getFeedByTimeline("today", pageParam, 10, DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lng, DEFAULT_DISTANCE_KM),
-    getNextPageParam: (lastPage) => {
+      serviceFeed.getFeedByTimeline("today", pageParam, 10, lat, lng, radius, undefined, isAuth),
+    getNextPageParam: (lastPage: any) => {
       return lastPage.meta.current_page < lastPage.meta.last_page
         ? lastPage.meta.current_page + 1
         : undefined;
@@ -80,86 +83,123 @@ export default function EventsWebview() {
   });
 
   const tomorrowQuery = useInfiniteQuery({
-    queryKey: ["service-feed-tomorrow", isAuth],
+    queryKey: ["service-feed-tomorrow", isAuth, lat, lng, radius],
     queryFn: ({ pageParam = 1 }) =>
-      serviceFeed.getFeedByTimeline("tomorrow", pageParam, 10, DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lng, DEFAULT_DISTANCE_KM),
-    getNextPageParam: (lastPage) => {
+      serviceFeed.getFeedByTimeline("tomorrow", pageParam, 10, lat, lng, radius, undefined, isAuth),
+    getNextPageParam: (lastPage: any) => {
       return lastPage.meta.current_page < lastPage.meta.last_page
         ? lastPage.meta.current_page + 1
         : undefined;
     },
     initialPageParam: 1,
-    enabled: !isAuth, // Only needed for guests since isAuth fetch returns everything
   });
 
   const laterQuery = useInfiniteQuery({
-    queryKey: ["service-feed-later", isAuth],
+    queryKey: ["service-feed-later", isAuth, lat, lng, radius],
     queryFn: ({ pageParam = 1 }) =>
-      serviceFeed.getFeedByTimeline("later", pageParam, 10, DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lng, DEFAULT_DISTANCE_KM),
-    getNextPageParam: (lastPage) => {
+      serviceFeed.getFeedByTimeline("later", pageParam, 10, lat, lng, radius, undefined, isAuth),
+    getNextPageParam: (lastPage: any) => {
       return lastPage.meta.current_page < lastPage.meta.last_page
         ? lastPage.meta.current_page + 1
         : undefined;
     },
     initialPageParam: 1,
-    enabled: !isAuth,
   });
 
-  const topPicks = featuredQuery.data?.pages.flatMap((p) => p.events) ?? [];
+  // Friends Going feed (only when authenticated)
+  const friendsGoingQuery = useQuery({
+    queryKey: ["service-feed-friends-going", lat, lng, radius],
+    queryFn: () => serviceFeed.getFriendsGoingFeed(1, lat, lng, radius, Intl.DateTimeFormat().resolvedOptions().timeZone),
+    enabled: isAuth,
+  });
 
-  // Combine all upcoming events for guests, or use the grouped feed for auth
-  let upcomingEvents: any[] = [];
-  if (isAuth) {
-    upcomingEvents = todayQuery.data?.pages.flatMap((p) => p.events) ?? [];
-  } else {
-    const todayEvents = (todayQuery.data?.pages.flatMap((p) => p.events) ?? []).map(e => ({ ...e, apiGroup: "today" }));
-    const tomorrowEvents = (tomorrowQuery.data?.pages.flatMap((p) => p.events) ?? []).map(e => ({ ...e, apiGroup: "tomorrow" }));
-    const laterEvents = (laterQuery.data?.pages.flatMap((p) => p.events) ?? []).map(e => ({ ...e, apiGroup: "later" }));
-    upcomingEvents = [...todayEvents, ...tomorrowEvents, ...laterEvents];
-  }
+  const topPicksRaw = featuredQuery.data?.pages.flatMap((p: any) => p.events) ?? [];
+  const friendsGoingEvents = friendsGoingQuery.data?.events ?? [];
+
+  // Interleave friends-going events into topPicks (every 2nd position)
+  const topPicks = (() => {
+    if (!isAuth || friendsGoingEvents.length === 0) return topPicksRaw;
+    const merged: any[] = [];
+    const existingIds = new Set(topPicksRaw.map((e: any) => e.id));
+    const uniqueFriends = friendsGoingEvents.filter((e: any) => !existingIds.has(e.id));
+    let fIdx = 0;
+    for (let i = 0; i < topPicksRaw.length; i++) {
+      merged.push(topPicksRaw[i]);
+      if ((i + 1) % 2 === 0 && fIdx < uniqueFriends.length) {
+        merged.push(uniqueFriends[fIdx++]);
+      }
+    }
+    // Append remaining friends-going events
+    while (fIdx < uniqueFriends.length) {
+      merged.push(uniqueFriends[fIdx++]);
+    }
+    return merged;
+  })();
+
+  const todayEvents = (todayQuery.data?.pages.flatMap((p: any) => p.events) ?? []).map((e: any) => ({ ...e, apiGroup: "today" }));
+  const tomorrowEvents = (tomorrowQuery.data?.pages.flatMap((p: any) => p.events) ?? []).map((e: any) => ({ ...e, apiGroup: "tomorrow" }));
+  const laterEvents = (laterQuery.data?.pages.flatMap((p: any) => p.events) ?? []).map((e: any) => ({ ...e, apiGroup: "later" }));
+  const upcomingEvents = [...todayEvents, ...tomorrowEvents, ...laterEvents];
 
   const filterByLanguage = (events: any[]) => {
     if (selectedLanguages.length === 0) return events;
     return events.filter((e) => {
       const eventLangs = e.languages || [];
-      if (eventLangs.length === 0) return true; // Show events with no language specified to avoid fully hiding everything by accident
+      if (eventLangs.length === 0) return true;
       return eventLangs.some((l: string) => selectedLanguages.includes(l));
     });
   };
 
-  const topPicksByLang = filterByLanguage(topPicks);
+  const filterByCountry = (events: any[]) => {
+    if (!selectedCountry) return events;
+    return events.filter((e) => {
+      const eLatRaw = e.raw?.latitude ?? e.raw?.lat ?? e.raw?.location?.lat ?? e.raw?.location?.latitude;
+      const eLngRaw = e.raw?.longitude ?? e.raw?.lng ?? e.raw?.location?.lng ?? e.raw?.location?.longitude;
 
-  const upcomingByLang = filterByLanguage(upcomingEvents);
+      const eLat = eLatRaw != null ? Number(eLatRaw) : null;
+      const eLng = eLngRaw != null ? Number(eLngRaw) : null;
 
-  const filteredTopPicks = activeCategory === "For You"
-    ? topPicksByLang
-    : topPicksByLang.filter(e => e.category === activeCategory);
+      const countryCode = getEventCountry(eLat ?? undefined, eLng ?? undefined);
+      if (!countryCode) return true;
+      return countryCode === selectedCountry;
+    });
+  };
 
-  const filteredUpcoming = activeCategory === "For You"
-    ? upcomingByLang
-    : upcomingByLang.filter(e => e.category === activeCategory);
+  const topPicksFiltered = filterByCountry(filterByLanguage(topPicks));
+  const upcomingFiltered = filterByCountry(filterByLanguage(upcomingEvents));
+
+  const filteredTopPicks = activeCategory === "Personalised"
+    ? topPicksFiltered
+    : topPicksFiltered.filter((e: any) => e.category === activeCategory);
+
+  const filteredUpcoming = activeCategory === "Personalised"
+    ? upcomingFiltered
+    : upcomingFiltered.filter((e: any) => e.category === activeCategory);
 
   const availableLanguages = Array.from(new Set([
-    ...topPicks.flatMap((e) => e.languages || []),
-    ...upcomingEvents.flatMap((e) => e.languages || []),
+    ...topPicks.flatMap((e: any) => e.languages || []),
+    ...upcomingEvents.flatMap((e: any) => e.languages || []),
     ...selectedLanguages,
     'en', 'pt', 'ru', 'es'
   ])).filter(Boolean).sort();
 
   const availableCategoryNames = new Set([
-    ...topPicks.map((e) => e.category),
-    ...upcomingEvents.map((e) => e.category),
+    ...topPicks.map((e: any) => e.category),
+    ...upcomingEvents.map((e: any) => e.category),
   ]);
 
   const availableCategories = DYNAMIC_CATEGORIES.filter(
-    (cat) => cat.name === "For You" || availableCategoryNames.has(cat.name)
+    (cat: any) => {
+      if (cat.name === "Personalised" && (config?.is_login_enabled === false)) return false;
+      return cat.name === "Personalised" || availableCategoryNames.has(cat.name);
+    }
   );
 
   const commonProps = {
     activeCategory,
     setActiveCategory,
     featuredQuery,
-    upcomingQuery: todayQuery, // Keep todayQuery as the main one for loading states
+    upcomingQuery: todayQuery,
     tomorrowQuery,
     laterQuery,
     topPicks: filteredTopPicks,
@@ -168,7 +208,13 @@ export default function EventsWebview() {
     selectedLanguages,
     availableLanguages,
     toggleLanguage,
+    selectedCountry,
+    toggleCountry,
+    countries: filteredCountries,
+    allCountriesCount: COUNTRIES.length,
     isAuth,
+    geoCity,
+    isLoginEnabled: config?.is_login_enabled !== false,
   };
 
   return (
