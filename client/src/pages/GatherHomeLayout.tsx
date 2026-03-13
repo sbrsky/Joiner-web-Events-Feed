@@ -34,6 +34,8 @@ const getEventGroup = (rawDate: string) => {
 
     return "Later";
 };
+import { LocationBanner } from "@/components/ui/location-banner";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 export function GatherHomeLayout({
     activeCategory,
@@ -57,6 +59,8 @@ export function GatherHomeLayout({
 }: any) {
     const { user, loginWithGoogle, logout } = useAuth();
     const [drawerType, setDrawerType] = useState<DrawerType>(null);
+    const { permissionStatus, requestLocation } = useGeolocation();
+    const [isBannerVisible, setIsBannerVisible] = useState(true);
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 pb-20 font-sans selection:bg-orange-100">
@@ -160,6 +164,13 @@ export function GatherHomeLayout({
             </header >
 
             <main className="pt-6 space-y-10">
+                <LocationBanner 
+                    isVisible={isBannerVisible}
+                    status={permissionStatus}
+                    onEnable={requestLocation}
+                    onClose={() => setIsBannerVisible(false)}
+                />
+
                 {/* Categories */}
                 <div className="px-0">
                     <ScrollArea className="w-full whitespace-nowrap">

@@ -12,6 +12,16 @@ const firebaseConfig = {
     measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || (window as any).ENV?.VITE_FIREBASE_MEASUREMENT_ID
 };
 
+if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+    console.warn("[Firebase] Warning: Using placeholder API key. Login might fail.");
+} else {
+    console.log("[Firebase] Initialized with config:", {
+        authDomain: firebaseConfig.authDomain,
+        storageBucket: firebaseConfig.storageBucket,
+        projectId: firebaseConfig.projectId
+    });
+}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
