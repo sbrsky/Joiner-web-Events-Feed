@@ -66,7 +66,7 @@ function RegistrationCard({
                     </div>
                 </div>
 
-                {!isLoginEnabled ? (
+                {(!isLoginEnabled && isAuth) ? (
                     <div className="bg-gray-100 text-gray-400 font-bold p-3 text-center rounded-xl text-sm border border-gray-100">
                         Login is currently disabled
                     </div>
@@ -102,6 +102,8 @@ function RegistrationCard({
 }
 
 import { COUNTRIES } from "@/lib/countries";
+import { useAffiliates } from "@/hooks/useAffiliates";
+import { CreditCard, ExternalLink } from "lucide-react";
 
 export function GatherEventLayout({
     event, month, day, timeString, endTimeString, participants: allParticipants = [], minPrice, currency,
@@ -119,6 +121,31 @@ export function GatherEventLayout({
             photo: p.photo || p.avatar || p.image,
             name: p.name || "Participant"
         }));
+    const { affiliates } = useAffiliates();
+
+    const findAffiliateLinks = (text: string) => {
+        if (!text || affiliates.length === 0) return [];
+        const links: { name: string; url: string }[] = [];
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        let match;
+        while ((match = urlRegex.exec(text)) !== null) {
+            const url = match[0];
+            const affiliate = affiliates.find(a => url.startsWith(a.urlStartsWith));
+            if (affiliate) {
+                links.push({ name: affiliate.name, url });
+            }
+        }
+        return links;
+    };
+
+    const removeAffiliateLinks = (text: string, foundLinks: { url: string }[]) => {
+        let cleanText = text;
+        foundLinks.forEach(link => {
+            cleanText = cleanText.replace(link.url, "");
+        });
+        return cleanText.trim();
+    };
+
     const [drawerType, setDrawerType] = useState<DrawerType>(null);
     const [isHostAboutOpen, setIsHostAboutOpen] = useState(false);
     const { user, loginWithGoogle, logout } = useAuth();
@@ -463,15 +490,48 @@ export function GatherEventLayout({
                         </div>
 
                         {/* About Event */}
-                        <div className="space-y-4">
-                            <h2 className="text-xl font-bold text-gray-900">About Event</h2>
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-gray-900">About Event</h2>
+                            </div>
+
+                            {(() => {
+                                const fullDesc = `${event.description || ""}\n${event.raw?.extra_description || ""}`;
+                                const foundLinks = findAffiliateLinks(fullDesc);
+                                if (foundLinks.length === 0) return null;
+
+                                return (
+                                    <div className="flex flex-col gap-3">
+                                        {foundLinks.map((link, idx) => (
+                                            <Button
+                                                key={idx}
+                                                className="w-full h-14 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-lg shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
+                                                onClick={() => window.open(link.url, "_blank")}
+                                            >
+                                                <CreditCard className="w-6 h-6" />
+                                                {link.name || "Pay Now"}
+                                                <ExternalLink className="w-4 h-4 opacity-50" />
+                                            </Button>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+
                             <div className="text-gray-600 leading-relaxed space-y-4 text-[15px]">
                                 <p className="whitespace-pre-line">
-                                    {event.description || "No description provided."}
+                                    {(() => {
+                                        const fullDesc = event.description || "";
+                                        const foundLinks = findAffiliateLinks(fullDesc);
+                                        return removeAffiliateLinks(fullDesc, foundLinks) || (event.description ? "" : "No description provided.");
+                                    })()}
                                 </p>
                                 {event.raw?.extra_description && (
                                     <p className="whitespace-pre-line">
-                                        {event.raw.extra_description as string}
+                                        {(() => {
+                                            const extraDesc = event.raw.extra_description as string;
+                                            const foundLinks = findAffiliateLinks(extraDesc);
+                                            return removeAffiliateLinks(extraDesc, foundLinks);
+                                        })()}
                                     </p>
                                 )}
                             </div>

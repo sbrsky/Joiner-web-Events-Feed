@@ -5,12 +5,12 @@ export function useLanguages() {
         if (typeof window !== "undefined") {
             try {
                 const saved = localStorage.getItem("selectedLanguages");
-                return saved ? JSON.parse(saved) : ["en"];
+                return saved ? JSON.parse(saved) : [];
             } catch {
-                return ["en"];
+                return [];
             }
         }
-        return ["en"];
+        return [];
     });
 
     const toggleLanguage = (lang: string) => {

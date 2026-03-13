@@ -205,7 +205,7 @@ export default function EventsWebview() {
     topPicks: filteredTopPicks,
     upcomingEvents: filteredUpcoming,
     CATEGORIES: availableCategories,
-    selectedLanguages,
+    selectedLanguages: (!isAuth && selectedLanguages.length === 0) ? availableLanguages : selectedLanguages,
     availableLanguages,
     toggleLanguage,
     selectedCountry,

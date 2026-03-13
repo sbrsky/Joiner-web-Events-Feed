@@ -120,7 +120,9 @@ export default function EventPage() {
     const commonProps = {
         event, month, day, timeString, endTimeString, participants, minPrice, currency,
         participationStatus, handleJoin, isJoining, isAuth,
-        selectedLanguages, availableLanguages, toggleLanguage,
+        selectedLanguages: (!isAuth && selectedLanguages.length === 0) ? availableLanguages : selectedLanguages,
+        availableLanguages, 
+        toggleLanguage,
         selectedCountry, toggleCountry,
         countries: filteredCountries,
         allCountriesCount: COUNTRIES.length,
