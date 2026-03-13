@@ -1,0 +1,14 @@
+{
+  "gtm_id": "",
+  "meta_pixel_id": "",
+  "ga_measurement_id": "",
+  "clarity_id": "",
+  "hotjar_id": "",
+  "hotjar_sv": "",
+  "mixpanel_token": "",
+  "allowed_countries": [
+    "PT",
+    "LT",
+    "LV"
+  ]
+}
