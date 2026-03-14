@@ -5,6 +5,7 @@ import { supabase } from "./supabaseClient";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { refineDescription, generateImageFromPrompt } from "./ai";
+import { getGaMetrics, getTopEvents } from "./analyticsApi";
 
 // --- Analytics Config Store (Supabase-backed with in-memory cache) ---
 
@@ -206,6 +207,27 @@ export async function registerRoutes(
     await saveConfigToSupabase(analyticsConfig);
     res.json({ ok: true });
   });
+
+  // Admin: get Google Analytics stats
+  app.get("/api/admin/ga-stats", async (_req, res) => {
+    try {
+      const metrics = await getGaMetrics();
+      const topEvents = await getTopEvents();
+      
+      if (!metrics) {
+        return res.status(404).json({ error: "Google Analytics not configured or property ID missing." });
+      }
+
+      res.json({
+        metrics,
+        topEvents
+      });
+    } catch (err) {
+      console.error("[Admin API] GA Stats error:", err);
+      res.status(500).json({ error: "Failed to fetch GA metrics" });
+    }
+  });
+
   // Generic proxy to forward requests to the real API and append the secure API key
   app.use("/api/proxied", async (req, res) => {
     const targetPathAndQuery = req.originalUrl.replace("/api/proxied", "");

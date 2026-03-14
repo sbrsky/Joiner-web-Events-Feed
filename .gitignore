@@ -5,3 +5,4 @@ server/public
 vite.config.ts.*
 *.tar.gz
 .env
+client/src/docs/joiner-web-view-c73f3fd0b12b.json

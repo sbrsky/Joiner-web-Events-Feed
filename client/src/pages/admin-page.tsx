@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
     BarChart3, Settings, Eye, Users, TrendingUp, Activity,
     Save, CheckCircle, ExternalLink, Tag, Globe, Shield,
@@ -149,6 +150,15 @@ export default function AdminPage() {
     const [password, setPassword] = useState("");
     const [authenticated, setAuthenticated] = useState(false);
 
+    const { data: gaStats, isLoading: gaLoading } = useQuery({
+        queryKey: ["admin-ga-stats"],
+        queryFn: () => fetch("/api/admin/ga-stats").then(r => {
+            if (!r.ok) throw new Error("GA not configured");
+            return r.json();
+        }),
+        enabled: authenticated && tab === "dashboard"
+    });
+
     // Simple client-side password protection
     const ADMIN_PASSWORD = "joiner2024";
 
@@ -287,25 +297,25 @@ export default function AdminPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <StatCard
                                 icon={<Eye className="w-6 h-6 text-blue-600" />}
-                                label="Page Views (today)"
-                                value="—"
+                                label="Page Views (7d)"
+                                value={gaLoading ? "..." : (gaStats?.metrics?.pageViews || "—")}
                                 color="bg-blue-50"
-                                change="Connect GA ↗"
+                                change={gaStats ? "Last 7 days" : "Connect GA ↗"}
                             />
                             <StatCard
                                 icon={<Users className="w-6 h-6 text-violet-600" />}
-                                label="Unique Visitors"
-                                value="—"
+                                label="Unique Visitors (7d)"
+                                value={gaLoading ? "..." : (gaStats?.metrics?.activeUsers || "—")}
                                 color="bg-violet-50"
-                                change="Connect GA ↗"
+                                change={gaStats ? "Last 7 days" : "Connect GA ↗"}
                             />
                             <StatCard
                                 icon={<TrendingUp className="w-6 h-6 text-emerald-600" />}
-                                label="Events Listed"
-                                value="Live"
+                                label="Engagement Rate"
+                                value={gaLoading ? "..." : (gaStats?.metrics?.engagementRate || "—")}
                                 color="bg-emerald-50"
                                 positive
-                                change="From API"
+                                change={gaStats ? "Avg session quality" : "From API"}
                             />
                             <StatCard
                                 icon={<Activity className="w-6 h-6 text-orange-600" />}
@@ -317,40 +327,77 @@ export default function AdminPage() {
                             />
                         </div>
 
-                        {/* Tools Status */}
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                                <h2 className="font-bold text-gray-900">Analytics Tools Status</h2>
-                                <button
-                                    onClick={() => setTab("analytics")}
-                                    className="text-sm font-semibold text-orange-600 hover:underline flex items-center gap-1"
-                                >
-                                    Configure <ChevronRight className="w-4 h-4" />
-                                </button>
+                        {/* Analysis Grid */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Tools Status */}
+                            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                                    <h2 className="font-bold text-gray-900">Analytics Tools Status</h2>
+                                    <button
+                                        onClick={() => setTab("analytics")}
+                                        className="text-sm font-semibold text-orange-600 hover:underline flex items-center gap-1"
+                                    >
+                                        Configure <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="divide-y divide-gray-50">
+                                    {[
+                                        { label: "Google Tag Manager", key: "gtm_id", icon: "🏷️" },
+                                        { label: "Meta Pixel", key: "meta_pixel_id", icon: "🔵" },
+                                        { label: "Google Analytics 4", key: "ga_measurement_id", icon: "📊" },
+                                        { label: "Microsoft Clarity", key: "clarity_id", icon: "🔍" },
+                                        { label: "Hotjar", key: "hotjar_id", icon: "🔥" },
+                                        { label: "Mixpanel", key: "mixpanel_token", icon: "📈" },
+                                    ].map(({ label, key, icon }) => {
+                                        const val = config[key as keyof AnalyticsConfig];
+                                        return (
+                                            <div key={key} className="px-6 py-4 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xl">{icon}</span>
+                                                    <span className="text-sm font-semibold text-gray-700">{label}</span>
+                                                </div>
+                                                <div className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${val ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${val ? "bg-emerald-500" : "bg-gray-400"}`} />
+                                                    {val ? "Active" : "Not configured"}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                            <div className="divide-y divide-gray-50">
-                                {[
-                                    { label: "Google Tag Manager", key: "gtm_id", icon: "🏷️" },
-                                    { label: "Meta Pixel", key: "meta_pixel_id", icon: "🔵" },
-                                    { label: "Google Analytics 4", key: "ga_measurement_id", icon: "📊" },
-                                    { label: "Microsoft Clarity", key: "clarity_id", icon: "🔍" },
-                                    { label: "Hotjar", key: "hotjar_id", icon: "🔥" },
-                                    { label: "Mixpanel", key: "mixpanel_token", icon: "📈" },
-                                ].map(({ label, key, icon }) => {
-                                    const val = config[key as keyof AnalyticsConfig];
-                                    return (
-                                        <div key={key} className="px-6 py-4 flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xl">{icon}</span>
-                                                <span className="text-sm font-semibold text-gray-700">{label}</span>
-                                            </div>
-                                            <div className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${val ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
-                                                <div className={`w-1.5 h-1.5 rounded-full ${val ? "bg-emerald-500" : "bg-gray-400"}`} />
-                                                {val ? "Active" : "Not configured"}
-                                            </div>
+
+                            {/* Top Events */}
+                            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                                    <h2 className="font-bold text-gray-900">Top Events (7d)</h2>
+                                    <BarChart3 className="w-4 h-4 text-gray-400" />
+                                </div>
+                                <div className="p-6">
+                                    {gaLoading ? (
+                                        <div className="space-y-4">
+                                            {[1, 2, 3].map(i => (
+                                                <div key={i} className="flex justify-between items-center animate-pulse">
+                                                    <div className="w-24 h-4 bg-gray-100 rounded" />
+                                                    <div className="w-8 h-4 bg-gray-100 rounded" />
+                                                </div>
+                                            ))}
                                         </div>
-                                    );
-                                })}
+                                    ) : gaStats?.topEvents?.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {gaStats.topEvents.map((event: any) => (
+                                                <div key={event.name} className="flex justify-between items-center group">
+                                                    <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900 truncate pr-4">{event.name}</span>
+                                                    <span className="text-sm font-bold text-gray-900">{event.count}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <TrendingUp className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                                            <p className="text-xs text-gray-400">No events found in GA4</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
